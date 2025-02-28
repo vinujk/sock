@@ -10,6 +10,16 @@
 #define PATH_MSG_TYPE 1   // RSVP-TE PATH Message Type
 #define RESV_MSG_TYPE 2   // RSVP-TE RESV Message Type
 
+#define SESSION 1
+#define FILTER_SPEC 10
+#define SENDER_TEMPLATE 11
+#define RSVP_LABEL 16
+#define LABEL_REQUEST 19
+#define EXPLICIT_ROUTE 20
+#define RECORD_ROUTE 21
+#define HELLO 22
+#define SESSION_ATTRIBUTE 207
+
 // RSVP Common Header (Simplified)
 struct rsvp_header {
     uint8_t version_flags;
@@ -22,13 +32,24 @@ struct rsvp_header {
     struct in_addr receiver_ip;
 };
 
-// Label Object for RESV Message
-struct label_object {
+struct class_obj {
     uint8_t class_num;
     uint8_t c_type;
     uint16_t length;
+};
+
+struct label_req_object {
+    struct class_obj *class_obj;
+    uint16_t Reserved;
+    uint16_t L3PID;
+};
+
+// Label Object for RESV Message
+struct label_object {
+    struct class_obj *class_obj;
     uint32_t label;
 };
+
 
 // Function to send an RSVP-TE RESV message with label assignment
 void send_resv_message(int sock, struct in_addr sender_ip, struct in_addr receiver_ip) {
@@ -36,7 +57,8 @@ void send_resv_message(int sock, struct in_addr sender_ip, struct in_addr receiv
     char resv_packet[64];
 
     struct rsvp_header *resv = (struct rsvp_header*)resv_packet;
-    struct label_object *label_obj = (struct label_object*)(resv_packet + sizeof(struct rsvp_header));
+    struct class_obj *class_obj = (struct class_obj*)(resv_packet + sizeof(struct rsvp_header));
+    struct label_object *label_obj = (struct label_object*)(resv_packet + sizeof(struct rsvp_header) +sizeof(struct class_obj));
 
     // Populate RSVP RESV header
     resv->version_flags = 0x10;  // RSVP v1
@@ -49,9 +71,9 @@ void send_resv_message(int sock, struct in_addr sender_ip, struct in_addr receiv
     resv->receiver_ip = sender_ip;
 
     // Populate Label Object
-    label_obj->class_num = 16;  // Label class
-    label_obj->c_type = 1;  // Generic Label
-    label_obj->length = htons(sizeof(struct label_object));
+    class_obj->class_num = 16;  // Label class
+    class_obj->c_type = 1;  // Generic Label
+    class_obj->length = htons(sizeof(struct label_object));
     label_obj->label = htonl(1001);  // Assigned Label (1001)
 
     // Set destination (ingress router)
@@ -69,37 +91,27 @@ void send_resv_message(int sock, struct in_addr sender_ip, struct in_addr receiv
 }
 
 // Function to receive RSVP-TE PATH messages
-void receive_path_message(int sock) {
-    struct sockaddr_in sender_addr;
-    socklen_t addr_len = sizeof(sender_addr);
-    char buffer[1024];
+void receive_path_message(int sock, char buffer[], struct sockaddr_in sender_addr) {
+    //char buffer[1024];
 
     printf("Listening for RSVP-TE PATH messages...\n");
+	
+	struct rsvp_header *rsvp = (struct rsvp_header*)(buffer+20);
 
-    while (1) {
-        memset(buffer, 0, sizeof(buffer));
-	printf("ReaDing from the sock %d\n", sock);
-        int bytes_received = recvfrom(sock, buffer, sizeof(buffer), 0, 
-                                      (struct sockaddr*)&sender_addr, &addr_len);
-        if (bytes_received < 0) {
-            perror("Receive failed");
-            continue;
-        }
+	struct class_obj *class_obj = (struct class_obj*)(buffer + 20 + sizeof(struct rsvp_header));
 
- 	struct rsvp_header *rsvp = (struct rsvp_header*)(buffer+20);
-        
-	// Check if it's a PATH message
-        if (rsvp->msg_type == PATH_MSG_TYPE) {
-            printf("Received PATH message from %s\n", inet_ntoa(rsvp->sender_ip));
+        printf("Received PATH message from %s\n", inet_ntoa(sender_addr.sin_addr));
 
-            // Extract sender details
-            struct in_addr sender_ip = rsvp->sender_ip;
-            struct in_addr receiver_ip = rsvp->receiver_ip;
+        struct in_addr sender_ip = rsvp->sender_ip;
+        struct in_addr receiver_ip = rsvp->receiver_ip;
 
-            // Send a RESV message in response
-            send_resv_message(sock, sender_ip, receiver_ip);
-        }
-    }
+	switch(class_obj->class_num) {
+
+		case LABEL_REQUEST: 
+            		// Send a RESV message in response
+		        send_resv_message(sock, sender_ip, receiver_ip);
+			break;
+	}
 }
 
 int main() {
@@ -109,7 +121,42 @@ int main() {
         return 1;
     }
 
-    receive_path_message(sock);
+     char buffer[1024];
+
+    struct sockaddr_in sender_addr;
+    socklen_t addr_len = sizeof(sender_addr);
+
+    struct in_addr sender_ip, receiver_ip;
+ 
+    while(1) {
+   	memset(buffer, 0, sizeof(buffer));
+	int bytes_received = recvfrom(sock, buffer, sizeof(buffer), 0,
+       				(struct sockaddr*)&sender_addr, &addr_len);
+       	if (bytes_received < 0) {
+	        perror("Receive failed");
+       		continue;
+	}
+
+       	struct rsvp_header *rsvp = (struct rsvp_header*)(buffer+20);
+
+	printf(" received msg-type = %d\n", rsvp->msg_type);
+	switch(rsvp->msg_type) {
+
+		case PATH_MSG_TYPE: 
+			//Receive PATH Message
+			receive_path_message(sock,buffer,sender_addr);
+			break;
+
+		case RESV_MSG_TYPE: 
+    			// Receive RSVP-TE RESV Message
+			//receive_resv_message(sock,label_obj,sender_addr);
+			break;
+
+	}
+	break;
+    }
+
+    //receive_path_message(sock);
 
     close(sock);
     return 0;
