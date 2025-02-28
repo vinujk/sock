@@ -33,19 +33,21 @@ struct rsvp_header {
 };
 
 // Label Object for RESV Message
-struct label_req_object {
+struct class_obj {
     uint8_t class_num;
     uint8_t c_type;
     uint16_t length;
+};
+
+struct label_req_object {
+    struct class_obj *class_obj;
     uint16_t Reserved;
     uint16_t L3PID;
 };
 
 // Label Object for RESV Message
 struct label_object {
-    uint8_t class_num;
-    uint8_t c_type;
-    uint16_t length;
+    struct class_obj *class_obj;
     uint32_t label;
 };
 
@@ -68,9 +70,9 @@ void send_path_message(int sock, struct in_addr sender_ip, struct in_addr receiv
     path->receiver_ip = receiver_ip;
 
     // Populate Label Object                                                      
-    label_req_obj->class_num = 19;  // Label Request class                                    
-    label_req_obj->c_type = 1;  // Generic Label                                      
-    label_req_obj->length = htons(sizeof(struct label_req_object));                       
+    label_req_obj->class_obj->class_num = 19;  // Label Request class                                    
+    label_req_obj->class_obj->c_type = 1;  // Generic Label                                      
+    label_req_obj->class_obj->length = htons(sizeof(struct label_req_object));                       
     label_req_obj->L3PID = htonl(0x0800);  // Assigned Label (1001)
 
     // Set destination (egress router)
@@ -88,15 +90,17 @@ void send_path_message(int sock, struct in_addr sender_ip, struct in_addr receiv
 }
 
 // Function to receive an RSVP-TE RESV message
-void receive_resv_message(int sock, struct label_object *label_obj, struct sockaddr_in sender_addr) {
+void receive_resv_message(int sock, char buffer[], struct sockaddr_in sender_addr) {
 
     printf("Listening for RSVP-TE RESV messages...\n");
 
-//    struct label_object *label_obj = (struct label_object*)(buffer + 20 + sizeof(struct rsvp_header));
-
-	switch(label_obj->class_num) {
+    struct label_object *label_obj;
+    struct class_obj *class_obj = (struct class_obj*)(buffer + 20 + sizeof(struct rsvp_header));
+     
+    switch(class_obj->class_num) {
 	
 		case RSVP_LABEL: 
+			label_obj = (struct label_object*)(buffer + 20 + sizeof(struct rsvp_header)+sizeof(struct class_obj));
             		printf("Received RESV message from %s with Label %d\n", 
 				inet_ntoa(sender_addr.sin_addr), ntohl(label_obj->label));	
 			break;
@@ -143,8 +147,7 @@ int main() {
 
 		case RESV_MSG_TYPE: 
     			// Receive RSVP-TE RESV Message
-			label_obj = (struct label_object*)(buffer + 20 + sizeof(struct rsvp_header));
-			receive_resv_message(sock,label_obj,sender_addr);
+			receive_resv_message(sock,buffer,sender_addr);
 			break;
 
 	}
