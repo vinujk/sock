@@ -14,9 +14,9 @@
 struct rsvp_header {
     uint8_t version_flags;
     uint8_t msg_type;
-    uint16_t length;
     uint16_t checksum;
     uint8_t ttl;
+    uint16_t length;
     uint8_t reserved;
     struct in_addr sender_ip;
     struct in_addr receiver_ip;
@@ -85,11 +85,11 @@ void receive_resv_message(int sock) {
             continue;
         }
 
-        struct rsvp_header *rsvp = (struct rsvp_header*)buffer;
+        struct rsvp_header *rsvp = (struct rsvp_header*)(buffer+20);
 
         // Check if it's a RESV message
         if (rsvp->msg_type == RESV_MSG_TYPE) {
-            struct label_object *label_obj = (struct label_object*)(buffer + sizeof(struct rsvp_header));
+            struct label_object *label_obj = (struct label_object*)(buffer + 20 + sizeof(struct rsvp_header));
             printf("Received RESV message from %s with Label %d\n", 
                    inet_ntoa(rsvp->sender_ip), ntohl(label_obj->label));
         }
@@ -104,8 +104,8 @@ int main() {
     }
 
     struct in_addr sender_ip, receiver_ip;
-    inet_pton(AF_INET, "192.168.1.1", &sender_ip);  // Ingress Router
-    inet_pton(AF_INET, "192.168.1.2", &receiver_ip);  // Egress Router
+    inet_pton(AF_INET, "192.168.1.241", &sender_ip);  // Ingress Router
+    inet_pton(AF_INET, "192.168.1.242", &receiver_ip);  // Egress Router
 
     // Send RSVP-TE PATH Message
     send_path_message(sock, sender_ip, receiver_ip);
