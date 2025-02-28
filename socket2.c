@@ -14,9 +14,9 @@
 struct rsvp_header {
     uint8_t version_flags;
     uint8_t msg_type;
-    uint16_t length;
     uint16_t checksum;
     uint8_t ttl;
+    uint16_t length;
     uint8_t reserved;
     struct in_addr sender_ip;
     struct in_addr receiver_ip;
@@ -45,8 +45,8 @@ void send_resv_message(int sock, struct in_addr sender_ip, struct in_addr receiv
     resv->checksum = 0;
     resv->ttl = 255;
     resv->reserved = 0;
-    resv->sender_ip = sender_ip;
-    resv->receiver_ip = receiver_ip;
+    resv->sender_ip = receiver_ip;
+    resv->receiver_ip = sender_ip;
 
     // Populate Label Object
     label_obj->class_num = 16;  // Label class
@@ -78,6 +78,7 @@ void receive_path_message(int sock) {
 
     while (1) {
         memset(buffer, 0, sizeof(buffer));
+	printf("ReaDing from the sock %d\n", sock);
         int bytes_received = recvfrom(sock, buffer, sizeof(buffer), 0, 
                                       (struct sockaddr*)&sender_addr, &addr_len);
         if (bytes_received < 0) {
@@ -85,9 +86,9 @@ void receive_path_message(int sock) {
             continue;
         }
 
-        struct rsvp_header *rsvp = (struct rsvp_header*)buffer;
+ 	struct rsvp_header *rsvp = (struct rsvp_header*)(buffer+20);
         
-        // Check if it's a PATH message
+	// Check if it's a PATH message
         if (rsvp->msg_type == PATH_MSG_TYPE) {
             printf("Received PATH message from %s\n", inet_ntoa(rsvp->sender_ip));
 
