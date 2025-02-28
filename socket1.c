@@ -57,7 +57,8 @@ void send_path_message(int sock, struct in_addr sender_ip, struct in_addr receiv
     char path_packet[64];
 
     struct rsvp_header *path = (struct rsvp_header*)path_packet;
-    struct label_req_object *label_req_obj = (struct label_req_object*)(path_packet + sizeof(struct rsvp_header));
+    struct class_obj *class_obj = (struct class_obj*)(path_packet + sizeof(struct rsvp_header));
+    struct label_req_object *label_req_obj = (struct label_req_object*)(path_packet + sizeof(struct rsvp_header) + sizeof(struct label_req_object));
 
     // Populate RSVP PATH header
     path->version_flags = 0x10;  // RSVP v1
@@ -69,10 +70,11 @@ void send_path_message(int sock, struct in_addr sender_ip, struct in_addr receiv
     path->sender_ip = sender_ip;
     path->receiver_ip = receiver_ip;
 
+    printf(" sending message\n");
     // Populate Label Object                                                      
-    label_req_obj->class_obj->class_num = 19;  // Label Request class                                    
-    label_req_obj->class_obj->c_type = 1;  // Generic Label                                      
-    label_req_obj->class_obj->length = htons(sizeof(struct label_req_object));                       
+    class_obj->class_num = 19;  // Label Request class                                    
+    class_obj->c_type = 1;  // Generic Label                                      
+    class_obj->length = htons(sizeof(struct label_req_object));                       
     label_req_obj->L3PID = htonl(0x0800);  // Assigned Label (1001)
 
     // Set destination (egress router)
@@ -80,6 +82,7 @@ void send_path_message(int sock, struct in_addr sender_ip, struct in_addr receiv
     dest_addr.sin_addr = receiver_ip;
     dest_addr.sin_port = 0;
 
+     printf(" sending message1\n");
     // Send PATH message
     if (sendto(sock, path_packet, sizeof(path_packet), 0, 
                (struct sockaddr*)&dest_addr, sizeof(dest_addr)) < 0) {
