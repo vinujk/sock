@@ -42,7 +42,7 @@ void send_path_message(int sock, struct in_addr sender_ip, struct in_addr receiv
     session_obj->src_ip = sender_ip;
     //inet_pton(AF_INET, sender_ip, &session_obj->src_ip);
 
-    //hop object for PATH?RESV msg
+    //hop object for PATH and RESV msg
     hop_obj->class_obj.class_num = 3;
     hop_obj->class_obj.c_type = 1;
     hop_obj->class_obj.length = htons(sizeof(struct hop_object));
@@ -94,22 +94,52 @@ void send_path_message(int sock, struct in_addr sender_ip, struct in_addr receiv
     }
 }
 
+
+
+void get_resv_class_obj(int class_obj_arr[]) {
+	printf("getting calss obj arr\n");
+	class_obj_arr[0] = START_RECV_SESSION_OBJ;
+        class_obj_arr[1] = START_RECV_HOP_OBJ;
+  	class_obj_arr[2] = START_RECV_TIME_OBJ;
+	class_obj_arr[3] = START_RECV_FILTER_SPEC_OBJ;
+        class_obj_arr[4] = START_RECV_LABEL;
+}
+
+
 // Function to receive an RSVP-TE RESV message
 void receive_resv_message(int sock, char buffer[], struct sockaddr_in sender_addr) {
 
+    struct class_obj *class_obj;
+    int class_obj_arr[10]; 
+    int i = 0;
+
     printf("Listening for RSVP-TE RESV messages...\n");
 
+    memset(class_obj_arr, 0, sizeof(class_obj_arr));
+    get_class_obj(class_obj_arr);
     struct label_object *label_obj;
-    struct class_obj *class_obj = (struct class_obj*)(buffer + 20 + sizeof(struct rsvp_header));
-     
-    switch(class_obj->class_num) {
-	
+    
+    while(class_obj_arr[i] != 0) {
+	class_obj = (struct class_obj*) (buffer + class_obj_arr[i]);
+    	switch(class_obj->class_num) {
+
+		case SESSION:
+			break;
+		case HOP:
+			break;
+		case TIME:
+			break;	
+		case FILTER_SPEC:
+			break;
 		case RSVP_LABEL: 
-			label_obj = (struct label_object*)(buffer + 20 + sizeof(struct rsvp_header)+sizeof(struct class_obj));
+			label_obj = (struct label_object*)(buffer + START_RECV_LABEL);
+//20 + sizeof(struct rsvp_header)+sizeof(struct class_obj));
             		printf("Received RESV message from %s with Label %d\n", 
 				inet_ntoa(sender_addr.sin_addr), ntohl(label_obj->label));	
 			break;
         }
+	i++;
+    } 
 }
 
 int main() {
