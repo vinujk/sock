@@ -26,10 +26,10 @@
 // Function to send an RSVP-TE RESV message with label assignment
 void send_resv_message(int sock, struct in_addr sender_ip, struct in_addr receiver_ip) {
     struct sockaddr_in dest_addr;
-    char resv_packet[64];
+    char resv_packet[256];
 
     struct rsvp_header *resv = (struct rsvp_header*)resv_packet;
-    struct class_obj *class_obj = (struct class_obj*)(resv_packet + sizeof(struct rsvp_header));
+//    struct class_obj *class_obj = (struct class_obj*)(resv_packet + sizeof(struct rsvp_header));
     struct session_object *session_obj = (struct session_object*)(resv_packet + START_SENT_SESSION_OBJ);
     struct hop_object *hop_obj = (struct hop_object*)(resv_packet + START_SENT_HOP_OBJ);
     struct time_object *time_obj = (struct time_object*)(resv_packet + START_SENT_TIME_OBJ);
@@ -67,9 +67,9 @@ void send_resv_message(int sock, struct in_addr sender_ip, struct in_addr receiv
     time_obj->interval = 123; //dummy
 
     // Populate Label Object
-    class_obj->class_num = 16;  // Label class
-    class_obj->c_type = 1;  // Generic Label
-    class_obj->length = htons(sizeof(struct label_object));
+    label_obj->class_obj.class_num = 16;  // Label class
+    label_obj->class_obj.c_type = 1;  // Generic Label
+    label_obj->class_obj.length = htons(sizeof(struct label_object));
     label_obj->label = htonl(1001);  // Assigned Label (1001)
 
     // Set destination (ingress router)
@@ -117,18 +117,23 @@ void receive_path_message(int sock, char buffer[], struct sockaddr_in sender_add
 		class_obj = (struct class_obj*) (buffer + class_obj_arr[i]);
 		switch(class_obj->class_num) {
 			case SESSION:
+				printf("session obj %d\n",class_obj->class_num);
 				break;
 			case HOP:
+				printf("hoP obj %d\n",class_obj->class_num);
 				break;
 			case TIME:
+				printf("time obj %d\n",class_obj->class_num);
 				break;
 			case LABEL_REQUEST: 
             			// Send a RESV message in response
 		        	send_resv_message(sock, sender_ip, receiver_ip);
 				break;
 			case SESSION_ATTRIBUTE:
+				printf("session attr obj %d\n",class_obj->class_num);
 				break;
 			case SENDER_TEMPLATE:
+				printf("sender temp obj %d\n",class_obj->class_num);
 				break;
 		}
 		i++;
