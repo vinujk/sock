@@ -7,87 +7,17 @@
 #include <netinet/ip.h>
 #include "socket.h"
 
-/*#define RSVP_PROTOCOL 46  // RSVP IP Protocol Number
-#define PATH_MSG_TYPE 1   // RSVP-TE PATH Message Type
-#define RESV_MSG_TYPE 2   // RSVP-TE RESV Message Type
-
-#define SESSION 1
-#define FILTER_SPEC 10
-#define SENDER_TEMPLATE 11
-#define RSVP_LABEL 16
-#define LABEL_REQUEST 19
-#define EXPLICIT_ROUTE 20
-#define RECORD_ROUTE 21
-#define HELLO 22
-#define SESSION_ATTRIBUTE 207
-
-// RSVP Common Header (Simplified)
-struct rsvp_header {
-    uint8_t version_flags;
-    uint8_t msg_type;
-    uint16_t checksum;
-    uint8_t ttl;
-    uint16_t length;
-    uint8_t reserved;
-    struct in_addr sender_ip;
-    struct in_addr receiver_ip;
-};
-
-// common class Object 
-struct class_obj {
-    uint8_t class_num;
-    uint8_t c_type;
-    uint16_t length;
-};
-
-// Label Object for PATH Message
-struct label_req_object {
-    struct class_obj class_obj;
-    uint16_t Reserved;
-    uint16_t L3PID;
-};
-
-// Label Object for PATH Message
-struct session_object {
-    struct class_obj *class_obj;
-    uint32_t ipv4_tunnel_dest_addr;
-    uint16_t Reserved;
-    uint16_t Tunnel_ID;
-    uint16_t Extended_tunnel_ID;
-};  
-
-// Label Object for PATH Message
-struct session_attr {
-    struct class_obj *class_obj;
-    uint8_t setup_prio;
-    uint8_t holding_prio;
-    uint8_t flags;
-    uint8_t Name_len;
-    char Name[32];
-}
-
-// Label Object for PATH Message
-struct Sender_template_object {
-    struct class_obj *class_obj;
-    uint32_t ipv4_tunnel_src_addr;  
-    uint16_t Reserved;
-    uint16_t LSP_ID;
-}
-
-// Label Object for RESV Message
-struct label_object {
-    struct class_obj *class_obj;
-    uint32_t label;
-};*/
 
 // Function to send an RSVP-TE PATH message
 void send_path_message(int sock, struct in_addr sender_ip, struct in_addr receiver_ip) {
     struct sockaddr_in dest_addr;
-    char path_packet[64];
+    char path_packet[256];
 
     struct rsvp_header *path = (struct rsvp_header*)path_packet;
     //struct class_obj *class_obj = (struct class_obj*)(path_packet + START_SENT_CLASS_OBJ); 
-    struct session_object *session_obj = (struct session_object*)(path_packet + START_SENT_SESSION_OBJ); 
+    struct session_object *session_obj = (struct session_object*)(path_packet + START_SENT_SESSION_OBJ);
+    struct hop_object *hop_obj = (struct hop_object*)(path_packet + STARt_SENT_HOP_OBJ);
+    struct time_object *time_obj = (struct time_object*)(path_packet + START_SENT_TIME_OBJ);
     struct label_req_object *label_req_obj = (struct label_req_object*)(path_packet + START_SENT_LABEL_REQ); 
     struct session_attr_object *session_attr_obj = (struct session_attr_object*)(path_packet + START_SENT_SESSION_ATTR_OBJ); 
     struct sender_temp_object *sender_temp_obj = (struct sender_temp_object*)(path_packet + START_SENT_SENDER_TEMP_OBJ);
@@ -112,6 +42,18 @@ void send_path_message(int sock, struct in_addr sender_ip, struct in_addr receiv
     session_obj->src_ip = sender_ip;
     //inet_pton(AF_INET, sender_ip, &session_obj->src_ip);
 
+    //hop object for PATH?RESV msg
+    hop_obj->class_obj.class_num = 3;
+    hop_obj->class_obj.c_type = 1;
+    hop_obj->class_obj.length = htons(sizeof(struct hop_object));
+    hop_obj->next_hop = 1.1.1.1; //dummy
+    hop_obj->IFH = 123; //dummy
+
+    time_obj->class_obj.class_num = 5;
+    time_obj->class_obj.c_type = 1;
+    time_obj->class_obj.length = htons(sizeof(struct time_object));
+    time_obj->interval = 123 //dummy
+
     // Populate Label Object                                        
     label_req_obj->class_obj.class_num = 19;  // Label Request class
     label_req_obj->class_obj.c_type = 1;  // Generic Label                   
@@ -126,7 +68,7 @@ void send_path_message(int sock, struct in_addr sender_ip, struct in_addr receiv
     session_attr_obj->hold_prio = 7;
     session_attr_obj->flags = 0;
     session_attr_obj->name_len = sizeof("PE1");
-    strcpy("PE1", session_attr_obj->Name);
+    //strcpy("PE1", session_attr_obj->Name);
     
     //Sender template object for PATH msg
     sender_temp_obj->class_obj.class_num = 11;

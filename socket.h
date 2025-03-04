@@ -3,6 +3,8 @@
 #define RESV_MSG_TYPE 2   // RSVP-TE RESV Message Type
 
 #define SESSION 1
+#define HOP 3
+#define TIME_VALUES 5
 #define FILTER_SPEC 10
 #define SENDER_TEMPLATE 11
 #define RSVP_LABEL 16
@@ -19,7 +21,13 @@
 #define START_SENT_SESSION_OBJ (sizeof(struct rsvp_header))// + sizeof(struct class_obj))
 #define START_RECV_SESSION_OBJ (IP + START_SENT_SESSION_OBJ)
 
-#define START_SENT_LABEL_REQ (START_SENT_SESSION_OBJ + sizeof(struct session_object)) 
+#define START_SENT_HOP_OBJ (START_SENT_SESSION_OBJ + sizeof(struct session_object))
+#define START_RECV_HOP_OBJ (IP + START_SENT_HOP_OBJ)
+
+#define START_SENT_TIME_OBJ (START_SENT_HOP_OBJ + sizeof(struct hop_object))
+#define START_RECV_TIMe_OBJ (IP + START_SENT_TIME_OBJ)
+
+#define START_SENT_LABEL_REQ (START_SENT_TIME_OBJ + sizeof(struct time_object)) 
 #define START_RECV_LABEL_REQ (IP +  START_SENT_LABEL_REQ)
 
 #define START_SENT_SESSION_ATTR_OBJ (START_SENT_LABEL_REQ + sizeof(struct label_req_object))
@@ -66,6 +74,17 @@ struct session_object {
     uint16_t Reserved;
     uint16_t tunnel_id;
     struct in_addr src_ip;
+};
+
+struct hop_object {
+    struct class_obj class_obj;
+    struct in_addr next_hop;
+    uint32_t IFH;
+};
+
+struct time_object {
+    struct class_obj class_obj;
+    uint32_t Interval;
 };
 
 // Session Attribute Object for PATH Message
