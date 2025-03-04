@@ -25,7 +25,7 @@
 #define START_RECV_HOP_OBJ (IP + START_SENT_HOP_OBJ)
 
 #define START_SENT_TIME_OBJ (START_SENT_HOP_OBJ + sizeof(struct hop_object))
-#define START_RECV_TIMe_OBJ (IP + START_SENT_TIME_OBJ)
+#define START_RECV_TIME_OBJ (IP + START_SENT_TIME_OBJ)
 
 #define START_SENT_LABEL_REQ (START_SENT_TIME_OBJ + sizeof(struct time_object)) 
 #define START_RECV_LABEL_REQ (IP +  START_SENT_LABEL_REQ)
@@ -84,7 +84,7 @@ struct hop_object {
 
 struct time_object {
     struct class_obj class_obj;
-    uint32_t Interval;
+    uint32_t interval;
 };
 
 // Session Attribute Object for PATH Message

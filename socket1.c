@@ -16,7 +16,7 @@ void send_path_message(int sock, struct in_addr sender_ip, struct in_addr receiv
     struct rsvp_header *path = (struct rsvp_header*)path_packet;
     //struct class_obj *class_obj = (struct class_obj*)(path_packet + START_SENT_CLASS_OBJ); 
     struct session_object *session_obj = (struct session_object*)(path_packet + START_SENT_SESSION_OBJ);
-    struct hop_object *hop_obj = (struct hop_object*)(path_packet + STARt_SENT_HOP_OBJ);
+    struct hop_object *hop_obj = (struct hop_object*)(path_packet + START_SENT_HOP_OBJ);
     struct time_object *time_obj = (struct time_object*)(path_packet + START_SENT_TIME_OBJ);
     struct label_req_object *label_req_obj = (struct label_req_object*)(path_packet + START_SENT_LABEL_REQ); 
     struct session_attr_object *session_attr_obj = (struct session_attr_object*)(path_packet + START_SENT_SESSION_ATTR_OBJ); 
@@ -46,13 +46,13 @@ void send_path_message(int sock, struct in_addr sender_ip, struct in_addr receiv
     hop_obj->class_obj.class_num = 3;
     hop_obj->class_obj.c_type = 1;
     hop_obj->class_obj.length = htons(sizeof(struct hop_object));
-    hop_obj->next_hop = 1.1.1.1; //dummy
+    hop_obj->next_hop = receiver_ip; //dummy
     hop_obj->IFH = 123; //dummy
 
     time_obj->class_obj.class_num = 5;
     time_obj->class_obj.c_type = 1;
     time_obj->class_obj.length = htons(sizeof(struct time_object));
-    time_obj->interval = 123 //dummy
+    time_obj->interval = 123; //dummy
 
     // Populate Label Object                                        
     label_req_obj->class_obj.class_num = 19;  // Label Request class
