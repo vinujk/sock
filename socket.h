@@ -36,7 +36,10 @@
 #define START_SENT_SENDER_TEMP_OBJ (START_SENT_SESSION_ATTR_OBJ + sizeof(struct session_attr_object))
 #define START_RECV_SENDER_TEMP_OBJ (IP + START_SENT_SENDER_TEMP_OBJ)
 
-#define START_SENT_LABEL (sizeof(struct rsvp_header) + sizeof(struct class_obj)
+#define START_SENT_FILTER_SPEC_OBJ (START_SENT_TIME_OBJ + sizeof(struct Filter_spec_object))
+#define START_RECV_FILTER_SPEC_OBJ (IP + START_SENT_FILTER_SPEC_OBJ)
+ 
+#define START_SENT_LABEL (START_SENT_FILTER_SPEC_OBJ + sizeof(struct label_object))
 #define START_RECV_LABEL (IP + START_SENT_LABEL) 
 
 
@@ -76,16 +79,19 @@ struct session_object {
     struct in_addr src_ip;
 };
 
+//  Session Object for PATH and RESV MessagE
 struct hop_object {
     struct class_obj class_obj;
     struct in_addr next_hop;
     uint32_t IFH;
 };
 
+//  Session Object for PATH and RESV MessagE
 struct time_object {
     struct class_obj class_obj;
     uint32_t interval;
 };
+
 
 // Session Attribute Object for PATH Message
 struct session_attr_object {
@@ -104,7 +110,6 @@ struct sender_temp_object {
     uint16_t Reserved;
     uint16_t LSP_ID;
 };
-
 
 // Label Object for RESV Message
 struct label_object {
