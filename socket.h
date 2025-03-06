@@ -4,7 +4,7 @@
 
 #define SESSION 1
 #define HOP 3
-#define TIME_VALUES 5
+#define TIME 5
 #define FILTER_SPEC 10
 #define SENDER_TEMPLATE 11
 #define RSVP_LABEL 16
@@ -124,3 +124,14 @@ struct Filter_spec_object {
     uint16_t Reserved;
     uint16_t LSP_ID;
 };
+
+
+
+
+
+
+//FUNCTIONs
+
+void send_resv_message(int, struct in_addr, struct in_addr);
+void receive_path_message(int, char[], struct sockaddr_in);
+void get_class_obj(int[]);
