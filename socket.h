@@ -132,6 +132,9 @@ struct Filter_spec_object {
 
 //FUNCTIONs
 
+void send_path_message(int, struct in_addr, struct in_addr);
 void send_resv_message(int, struct in_addr, struct in_addr);
+void receive_resv_message(int, char[], struct sockaddr_in);
 void receive_path_message(int, char[], struct sockaddr_in);
-void get_class_obj(int[]);
+void get_resv_class_obj(int[]);
+void get_path_class_obj(int[]);
