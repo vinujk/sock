@@ -25,8 +25,12 @@
 
 }*/
 
+
+int sock = 0;
+struct in_addr sender_ip, receiver_ip;
+
 int main() {
-    int sock = socket(AF_INET, SOCK_RAW, RSVP_PROTOCOL);
+    sock = socket(AF_INET, SOCK_RAW, RSVP_PROTOCOL);
     if (sock < 0) {
         perror("Socket creation failed");
         return 1;
@@ -36,14 +40,9 @@ int main() {
     struct sockaddr_in sender_addr;
     socklen_t addr_len = sizeof(sender_addr);
 
-    struct in_addr sender_ip, receiver_ip;
-    inet_pton(AF_INET, "192.168.1.240", &sender_ip);  // Ingress Router
-    inet_pton(AF_INET, "192.168.1.244", &receiver_ip);  // Egress Router
-
-    // Send RSVP-TE PATH Message
-    send_path_message(sock, sender_ip, receiver_ip);
-
- 
+    printf("sock = %d\n", sock);
+    path_event_handler(); //send path msg
+	 
     while(1) {
    	memset(buffer, 0, sizeof(buffer));
 	int bytes_received = recvfrom(sock, buffer, sizeof(buffer), 0,
@@ -54,12 +53,12 @@ int main() {
 	}
 
        	struct rsvp_header *rsvp = (struct rsvp_header*)(buffer+20);
-	struct label_object *label_obj;
 
 	switch(rsvp->msg_type) {
 
 		case PATH_MSG_TYPE: 
 			//Receive PATH Message
+                  	//resv_event_handler();
 			//receive_path_message(sock);
 			break;
 
@@ -69,7 +68,6 @@ int main() {
 			break;
 
 	}
-	break;
     }
 
     close(sock);

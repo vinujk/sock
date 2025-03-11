@@ -5,7 +5,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <netinet/ip.h>
-#include "socket.h"
+#include "rsvp_msg.h"
 
 // Function to send an RSVP-TE RESV message with label assignment
 void send_resv_message(int sock, struct in_addr sender_ip, struct in_addr receiver_ip) {
@@ -203,7 +203,7 @@ void send_path_message(int sock, struct in_addr sender_ip, struct in_addr receiv
     dest_addr.sin_addr = receiver_ip;
     dest_addr.sin_port = 0;
 
-     printf(" sending message1\n");
+     printf(" sending message1 = %d\n",sock);
     // Send PATH message
     if (sendto(sock, path_packet, sizeof(path_packet), 0, 
                (struct sockaddr*)&dest_addr, sizeof(dest_addr)) < 0) {
