@@ -5,10 +5,17 @@
 
 #include "timer-event.h"
 #include "rsvp_msg.h"
+#include "rsvp_db.h"
 
 extern int sock;
-
 extern struct in_addr sender_ip, receiver_ip;
+
+extern struct session* sess;
+extern struct session* head;
+
+#define TIMEOUT 90
+#define INTERVAL 30
+
 
 // Timer event handler for Path
 void path_timer_handler(union sigval sv) {
@@ -20,7 +27,27 @@ void path_timer_handler(union sigval sv) {
 
 // Timer event handler for Resv
 void resv_timer_handler(union sigval sv) {
-    send_resv_message(sock, sender_ip, receiver_ip);
+    time_t now = time(NULL);
+
+        sess = head;
+        printf("timer handler \n");
+        while(sess != NULL) {
+                if((now - sess->last_path_time) > TIMEOUT) {
+                        printf("RSVP session expired: %s->%s\n",sess->sender, sess->receiver);
+                        head = delete_session(head, sess->sender, sess->receiver);
+                } else if((now - sess->last_path_time) < INTERVAL) {
+                        printf(" less than 30 sec\n");
+                        sess = sess->next;
+                        continue;
+                } else {
+                        printf("--------sebding resv message\n");
+
+                        inet_pton(AF_INET, sess->sender, &sender_ip);
+                        inet_pton(AF_INET, sess->receiver, &receiver_ip);
+                        send_resv_message(sock, sender_ip, receiver_ip);
+                }
+                sess = sess->next;
+        }
 }
 
 // Function to create a timer that triggers every 30 seconds
