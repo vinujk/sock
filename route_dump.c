@@ -26,7 +26,7 @@ int is_ip_in_subnet(const char *ip, const char *subnet, int prefix_len) {
 
     // default route
     if(!(subnet_addr.s_addr & mask.s_addr))
-	return 1;
+        return 1;
 
     // Perform bitwise AND
     if ((ip_addr.s_addr & mask.s_addr) == (subnet_addr.s_addr & mask.s_addr)) {
@@ -117,54 +117,60 @@ static inline int rtm_get_table(struct rtmsg *r, struct rtattr **tb)
     return table;
 }
 
-void print_route(struct nlmsghdr* nl_header_answer)
+int print_route(struct nlmsghdr* nl_header_answer)
 {
     struct rtmsg* r = NLMSG_DATA(nl_header_answer);
     int len = nl_header_answer->nlmsg_len;
     struct rtattr* tb[RTA_MAX+1];
     int table;
     char buf[256];
-    const char *route, *dev, *src;
+    char route[16], *dev;
     int prefix_len = 0;
+
+    strcpy(route, " ");
+    strcpy(nh, " ");
+    strcpy(src_ip, " ");
 
     len -= NLMSG_LENGTH(sizeof(*r));
 
     if (len < 0) {
         perror("Wrong message length");
-        return;
+        return 0; 
     }
-    
+
     parse_rtattr(tb, RTA_MAX, RTM_RTA(r), len);
 
     table = rtm_get_table(r, tb);
 
     if (r->rtm_family != AF_INET && table != RT_TABLE_MAIN) {
-        return;
+        return 0;
     }
 
     if(r->rtm_type != RTN_LOCAL && r->rtm_type != RTN_UNICAST)
-	return;
+        return 0;
 
     if (tb[RTA_DST]) {
         /*if ((r->rtm_dst_len != 24) && (r->rtm_dst_len != 16)) {
-            return;
-        }*/
+          return;
+          }*/
 
-	route = inet_ntop(r->rtm_family, RTA_DATA(tb[RTA_DST]), buf, sizeof(buf));
-	printf("route = %s\n", route);
+        inet_ntop(r->rtm_family, RTA_DATA(tb[RTA_DST]), buf, sizeof(buf));
+        strcpy(route, buf);
+        prefix_len = r->rtm_dst_len;
+        printf("route = %s %d \n", route,prefix_len);
         //printf("%s/%u ", inet_ntop(r->rtm_family, RTA_DATA(tb[RTA_DST]), buf, sizeof(buf)), r->rtm_dst_len);
 
     } else if (r->rtm_dst_len) {
         printf("0/%u ", r->rtm_dst_len);
     } else {
         //printf("default ");
-        route = "0.0.0.0";
+        strcpy(route, "0.0.0.0");
     }
 
     if (tb[RTA_GATEWAY]) {
-	inet_ntop(r->rtm_family, RTA_DATA(tb[RTA_GATEWAY]), buf, sizeof(buf));
-	strcpy(nh, buf);
-	printf("next hop for destination ip %s is -> %s\n", dest_ip, nh);
+        inet_ntop(r->rtm_family, RTA_DATA(tb[RTA_GATEWAY]), buf, sizeof(buf));
+        strcpy(nh, buf);
+        //printf("next hop for destination ip %s is -> %s\n", dest_ip, nh);
         //printf("via %s", inet_ntop(r->rtm_family, RTA_DATA(tb[RTA_GATEWAY]), buf, sizeof(buf)));
     }
 
@@ -172,30 +178,34 @@ void print_route(struct nlmsghdr* nl_header_answer)
         char if_nam_buf[IF_NAMESIZE];
         int ifidx = *(__u32 *)RTA_DATA(tb[RTA_OIF]);
 
-	dev = if_indextoname(ifidx, if_nam_buf);
-	//printf("dev -- %s ifidx = %d buf = %s\n", dev,ifidx,if_nam_buf);
+        dev = if_indextoname(ifidx, if_nam_buf);
+        //printf("dev -- %s ifidx = %d buf = %s\n", dev,ifidx,if_nam_buf);
         //printf(" dev %s", if_indextoname(ifidx, if_nam_buf));
     }
 
     if (tb[RTA_SRC]) {
-	inet_ntop(r->rtm_family, RTA_DATA(tb[RTA_SRC]), buf, sizeof(buf));
-	strcpy(src_ip, buf);
-		
-	printf("\n src -- %s\n", src_ip);
+        inet_ntop(r->rtm_family, RTA_DATA(tb[RTA_SRC]), buf, sizeof(buf));
+        //strcpy(src_ip, buf);
+
+        //printf("\n src -- %s\n", src_ip);
         //printf("src %s", inet_ntop(r->rtm_family, RTA_DATA(tb[RTA_SRC]), buf, sizeof(buf)));
     }
 
     if (tb[RTA_PREFSRC]) {
-	printf("src %s\n", inet_ntop(r->rtm_family, RTA_DATA(tb[RTA_PREFSRC]), buf, sizeof(buf)));
+        inet_ntop(r->rtm_family, RTA_DATA(tb[RTA_PREFSRC]), buf, sizeof(buf));
+        strcpy(src_ip, buf);
+        //	printf("src %s\n", inet_ntop(r->rtm_family, RTA_DATA(tb[RTA_PREFSRC]), buf, sizeof(buf)));
     }
 
     if(is_ip_in_subnet(dest_ip, route, prefix_len)) {
-	printf("\n next hop --- %s\n", nh);
+        printf("next hop for destination ip %s is -> %s\n", dest_ip, nh);
+        printf("\n next hop --- %s\n", nh);
+        return 1;
     } else {
-	//printf("------ dest ip not found\n");
+        //printf("------ dest ip not found\n");
     }
 
-    printf("\n");
+    //printf("\n");
 }
 
 int open_netlink()
@@ -277,7 +287,8 @@ int get_route_dump_response(int sock)
             free(buf);
         }
 
-        print_route(h);
+        if(print_route(h))
+            return 1;
 
         h = NLMSG_NEXT(h, msglen);
     }
@@ -290,7 +301,7 @@ int get_route_dump_response(int sock)
 int get_nexthop(const char *dst_ip, char *nh_ip)
 {
 
-
+    int temp = 0;
     strcpy(dest_ip, dst_ip);
     int nl_sock = open_netlink();
 
@@ -300,11 +311,14 @@ int get_nexthop(const char *dst_ip, char *nh_ip)
         return -1;
     }
 
-    get_route_dump_response(nl_sock);
+    temp = get_route_dump_response(nl_sock);
 
     strcpy(nh_ip, nh);
 
     close (nl_sock);
+
+    if(temp)
+        return 1;
 
     return 0;
 }

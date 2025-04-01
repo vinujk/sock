@@ -8,46 +8,80 @@
 #include "rsvp_db.h"
 
 extern int sock;
-extern struct in_addr sender_ip, receiver_ip;
+struct in_addr sender_ip, receiver_ip;
 
 extern struct session* sess;
-extern struct session* head;
+extern struct session* path_head;
+extern struct session* resv_head;
+extern db_node* path_tree;
+extern db_node* resv_tree;
 
 #define TIMEOUT 90
 #define INTERVAL 30
 
+// Timer event handler for sending PATH message
+// will be checking RESV msgs for every session and 30sc
+// No RESV msg for 90 sec for the specific session         
+// send PATH tear message if RESV msg not received
 
-// Timer event handler for Path
 void path_timer_handler(union sigval sv) {
-    inet_pton(AF_INET, "192.168.11.11", &sender_ip);  // Ingress Router
-    inet_pton(AF_INET, "192.168.11.12", &receiver_ip);  // Egress Router
-    // Send RSVP-TE PATH Message
-    send_path_message(sock, sender_ip, receiver_ip);
+
+    time_t now = time(NULL);
+    struct session* temp = NULL;
+    temp = resv_head;
+
+    printf("path timer handler \n");
+    while(temp != NULL) {
+        if((now - temp->last_path_time) > TIMEOUT) {
+            printf("RSVP session expired: %s->%s\n",temp->sender, temp->receiver);
+            resv_head = delete_session(temp, temp->sender, temp->receiver);
+            resv_tree = delete_node(resv_tree, temp->tunnel_id, compare_resv_del, 0);
+        } else if((now - temp->last_path_time) < INTERVAL) {
+            printf(" less than 30 sec\n");
+            temp = temp->next;
+            continue;
+        } else {
+            //printf("--------No resv msg, sending path message\n");
+
+            inet_pton(AF_INET, temp->sender, &sender_ip);
+            inet_pton(AF_INET, temp->receiver, &receiver_ip);
+
+            // Send RSVP-TE PATH Message
+            send_path_message(sock, sender_ip, receiver_ip);
+        }
+        temp = temp->next;
+    }
 }
 
-// Timer event handler for Resv
+// Timer event handler for sending RESV message
+// will be checking path msgs for every session and 30sc
+// No path message for 90 sec for the specific session 
+// send resv tear message if path msg not received
+
 void resv_timer_handler(union sigval sv) {
     time_t now = time(NULL);
+    struct session* temp = NULL;
+    temp = path_head;
 
-        sess = head;
-        printf("timer handler \n");
-        while(sess != NULL) {
-                if((now - sess->last_path_time) > TIMEOUT) {
-                        printf("RSVP session expired: %s->%s\n",sess->sender, sess->receiver);
-                        head = delete_session(head, sess->sender, sess->receiver);
-                } else if((now - sess->last_path_time) < INTERVAL) {
-                        printf(" less than 30 sec\n");
-                        sess = sess->next;
-                        continue;
-                } else {
-                        printf("--------sebding resv message\n");
+    printf("resv timer handler \n");
+    while(temp != NULL) {
+        if((now - temp->last_path_time) > TIMEOUT) {
+            printf("RSVP session expired: %s->%s\n",temp->sender, temp->receiver);
+            path_head = delete_session(temp, temp->sender, temp->receiver);
+            path_tree = delete_node(path_tree, temp->tunnel_id, compare_path_del, 1);
+        } else if((now - temp->last_path_time) < INTERVAL) {
+            printf(" less than 30 sec\n");
+            temp = temp->next;
+            continue;
+        } else {
+            //printf("-------No path msg, sending resv message\n");
 
-                        inet_pton(AF_INET, sess->sender, &sender_ip);
-                        inet_pton(AF_INET, sess->receiver, &receiver_ip);
-                        send_resv_message(sock, sender_ip, receiver_ip);
-                }
-                sess = sess->next;
+            inet_pton(AF_INET, temp->sender, &sender_ip);
+            inet_pton(AF_INET, temp->receiver, &receiver_ip);
+            send_resv_message(sock, sender_ip, receiver_ip);
         }
+        temp = temp->next;
+    }
 }
 
 // Function to create a timer that triggers every 30 seconds
@@ -70,9 +104,9 @@ timer_t create_timer(void (*handler)(union sigval)) {
 // Function to start a timer with a 30-second interval
 void start_timer(timer_t timerid) {
     struct itimerspec its;
-    its.it_value.tv_sec = 30;   // Initial delay
+    its.it_value.tv_sec = INTERVAL;   // Initial delay
     its.it_value.tv_nsec = 0;
-    its.it_interval.tv_sec = 30; // Repeating interval
+    its.it_interval.tv_sec = INTERVAL; // Repeating interval
     its.it_interval.tv_nsec = 0;
 
     if (timer_settime(timerid, 0, &its, NULL) < 0) {
@@ -82,12 +116,12 @@ void start_timer(timer_t timerid) {
 }
 
 void path_event_handler() {
-        timer_t path_timer = create_timer(path_timer_handler);
-        start_timer(path_timer);
+    timer_t path_timer = create_timer(path_timer_handler);
+    start_timer(path_timer);
 }
 
 void resv_event_handler() {
-        timer_t resv_timer = create_timer(resv_timer_handler);
-        start_timer(resv_timer);
+    timer_t resv_timer = create_timer(resv_timer_handler);
+    start_timer(resv_timer);
 }
 
