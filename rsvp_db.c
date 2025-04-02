@@ -1,77 +1,81 @@
 #include "rsvp_db.h"
-#include "rsvp_msg.h"
 #include "timer-event.h"
 
 struct session* sess = NULL;
 struct session* head = NULL;
 time_t now = 0;
 
-struct session* insert_session(struct session* sess, uint8_t t_id, char sender[], char receiver[]) {
-    now = time(NULL);
-    printf("insert session\n");
-    if(sess == NULL) {
-        struct session *temp = (struct session*)malloc(sizeof(struct session));
-        if(temp < 0)
-            printf("cannot allocate dynamic memory]n");
+	
+struct session* insert_session(struct session* sess, uint8_t t_id, char sender[], char receiver[], u_int8_t dest) {
+        now = time(NULL);
+        printf("insert session\n");
+        if(sess == NULL) {
+                struct session *temp = (struct session*)malloc(sizeof(struct session));
+                if(temp < 0)
+                         printf("cannot allocate dynamic memory]n");
 
-        temp->last_path_time = now;
-        strcpy(temp->sender, sender);
-        strcpy(temp->receiver, receiver);
-        temp->tunnel_id = t_id;
-        temp->next = NULL;
-        return temp;
-    } else {
-        struct session *local = NULL;
-        while(sess != NULL) {
-            if((strcmp(sess->sender, sender) == 0) &&
-                    (strcmp(sess->receiver, receiver) == 0)) {
-                sess->last_path_time = now;
-                return NULL;
-            }
-            local = sess;
-            sess=sess->next;
-        }
-
-        struct session *temp = (struct session*)malloc(sizeof(struct session));
-        if(sess < 0)
-            printf("cannot allocate dynamic memory\n");
-
-        temp->last_path_time = now;
-        strcpy(temp->sender, sender);
-        strcpy(temp->receiver, receiver);
-        temp->tunnel_id = t_id;
-        temp->next = NULL;
-
-        local->next = temp;
-    }
-}
-
-struct session* delete_session(struct session* sess, char sender[], char receiver[]) {
-
-    struct session *temp = NULL;
-    struct session *head = sess;
-
-    printf("delete session\n");
-    while(sess != NULL) {
-        if((head == sess) &&
-                (strcmp(sess->sender, sender) == 0) &&
-                (strcmp(sess->receiver, receiver) == 0)) {
-            temp = head;
-            head = head->next;
-            free(temp);
-            return head;
+                temp->last_path_time = now;
+                strcpy(temp->sender, sender);
+                strcpy(temp->receiver, receiver);
+		temp->dest = dest;
+		temp->tunnel_id = t_id;
+                temp->next = NULL;
+                return temp;
         } else {
-            if((strcmp(sess->sender, sender) == 0) &&
-                    (strcmp(sess->receiver, receiver) == 0)) {
-                temp = sess->next;
-                *sess = *sess->next;
-                free(temp);
-            }else{
-                sess = sess->next;
-            }
+		struct session *local = NULL;
+                while(sess != NULL) {
+                        if((strcmp(sess->sender, sender) == 0) &&
+                           (strcmp(sess->receiver, receiver) == 0)) {
+				sess->last_path_time = now;
+                                return;
+                        }
+			local = sess;
+                        sess=sess->next;
+                }
+
+                struct session *temp = (struct session*)malloc(sizeof(struct session));
+                if(sess < 0)
+                         printf("cannot allocate dynamic memory\n");
+
+                temp->last_path_time = now;
+		strcpy(temp->sender, sender);
+                strcpy(temp->receiver, receiver);
+		temp->dest = dest;
+		temp->tunnel_id = t_id;
+                temp->next = NULL;
+
+                local->next = temp;
         }
-    }
 }
+
+
+struct session* delete_session(struct session* sess, char sender[], char receiver[]) { 
+
+        struct session *temp = NULL;
+	struct session *head = sess;
+
+        printf("delete session\n");
+        while(sess != NULL) {
+                if((head == sess) &&
+                   (strcmp(sess->sender, sender) == 0) &&
+                   (strcmp(sess->receiver, receiver) == 0)) {
+                        temp = head;
+                        head = head->next;
+                        free(temp);
+                        return head;
+                } else {
+                        if((strcmp(sess->sender, sender) == 0) &&
+                           (strcmp(sess->receiver, receiver) == 0)) {
+				temp = sess->next;
+                                *sess = *sess->next;
+                                free(temp);
+                        }else{
+                                sess = sess->next;
+                        }
+                }
+        }
+}
+
 
 //AVL for Path adn Resv table
 //*****************************************
@@ -220,9 +224,9 @@ db_node* delete_node(db_node* node, int tunnel_id, int (*cmp)(int , const void *
 
 
 /* Search for a path_msg node */
-db_node* search_node(db_node *node, void *data, int (*cmp)(const void *, const void *)) {
+voiD* search_node(db_node *node, void *data, int (*cmp)(const void *, const void *)) {
     if (!node || cmp(data, node->data) == 0)
-        return node;
+        return node->data;
 
     if (cmp(data, node->data) < 0) 
         return search_node(node->left, data, cmp);
@@ -262,13 +266,20 @@ db_node* path_tree_insert(db_node* path_tree, char buffer[]) {
     p->tunnel_id = session_obj->tunnel_id;
     p->src_ip = (session_obj->src_ip);
     p->dest_ip = (session_obj->dst_ip);
-    p->next_hop_ip = (hop_obj->next_hop);
-    p->time_interval = time_obj->interval;
+    p->interval = time_obj->interval;
     p->setup_priority = session_attr_obj->setup_prio;
     p->hold_priority = session_attr_obj->hold_prio;
     p->flags = session_attr_obj->flags;
+    p->lsp_id = 1;
     strncpy(p->name, session_attr_obj->Name, sizeof(session_attr_obj->Name) - 1);
-    p->name[sizeof(p->name) - 1] = '\0';
+    p->name[sizeof(p->name) - 1] = '\0'
+ 
+    //get and assign nexthop
+    get_nexthop(inet_ntoa(p->dst_ip), nhip);
+    if(strcmp(nhip, " ") == 0)
+        inet_pton(AF_INET, "0.0.0.0", &p->nexthop_ip);
+    else    
+        inet_pton(AF_INET, nhip, &p->nexthop_ip);
 
     return insert_node(path_tree, p, compare_path_insert);
 }
@@ -283,8 +294,20 @@ db_node* resv_tree_insert(db_node* resv_tree, char buffer[]) {
     p->tunnel_id = session_obj->tunnel_id;
     p->src_ip = (session_obj->src_ip);
     p->dest_ip = (session_obj->dst_ip);
-    p->next_hop_ip = (hop_obj->next_hop);
-    p->time_interval = time_obj->interval;
+    p->interval = time_obj->interval;
+
+    get_nexthop(inet_ntoa(p->dst_ip), nhip);
+    if(strcmp(nhip, " ") == 0)
+	p->label = htonl(3);
+    else
+	p->label = hton(100);  //get the label from the label management;	
+
+    //get and assign nexthop
+    get_nexthop(inet_ntoa(p->src_ip), nhip);
+    if(strcmp(nhip, " ") == 0)
+	inet_pton(AF_INET, "0.0.0.0", &p->nexthop_ip);
+    else 
+	inet_pton(AF_INET, nhip, &p->nexthop_ip);	
 
     return insert_node(resv_tree, p, compare_resv_insert);
 }

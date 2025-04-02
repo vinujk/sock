@@ -1,9 +1,7 @@
 #include<stdio.h>
-#include<stdint.h>
 #include<string.h>
 #include<stdlib.h>
-#include<netinet/in.h>
-#include<arpa/inet.h>
+
 
 struct session {
     char sender[16];
@@ -15,26 +13,30 @@ struct session {
 
 /* Define path_msg structure */
 typedef struct path_msg {
-    uint8_t tunnel_id;
     struct in_addr src_ip;
     struct in_addr dest_ip;
-    struct in_addr next_hop_ip;
+    struct in_addr nexthop_ip;
+    uint8_t tunnel_id;
     uint8_t IFH;
-    uint8_t time_interval;
+    uint8_t interval;
     uint8_t setup_priority;
     uint8_t hold_priority;
     uint8_t flags;
-    char name[32];
+    uint16_t lsp_id;
+    char name[16];
 } path_msg;
 
 /* Define resv_msg structure */
 typedef struct resv_msg {
-    uint8_t tunnel_id;
     struct in_addr src_ip;
     struct in_addr dest_ip;
-    struct in_addr next_hop_ip;
+    struct in_addr nexthop_ip;
+    uint8_t tunnel_id;
     uint8_t IFH;
-    uint8_t time_interval;
+    uint8_t interval;
+    uint32_t in_label;
+    uint32_t out_label;
+    uint16_t lsp_id
 } resv_msg;
 
 typedef struct dbnode {
@@ -63,9 +65,10 @@ db_node* delete_node(db_node *, int, cmp func, int);
 void free_tree(db_node *);
 void display_tree(db_node *);
 
-struct session* insert_session(struct session* , uint8_t, char[], char[]);
-struct session* delete_session(struct session* , char[], char[]);
+struct session* insert_session(struct session*, uint8_t, char[], char[], uint8_t);
+struct session* delete_session(struct session*, char[], char[]);
 db_node* path_tree_insert(db_node*, char[]);
 db_node* resv_tree_insert(db_node*, char[]);
 int compare_path_del(int , const void *);
 int compare_resv_del(int , const void *);
+
