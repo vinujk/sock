@@ -1,13 +1,16 @@
 #include<stdio.h>
 #include<string.h>
 #include<stdlib.h>
-
+#include<stdint.h>
+#include<arpa/inet.h>
+#include<netinet/in.h>
 
 struct session {
     char sender[16];
     char receiver[16];
     uint8_t tunnel_id;
     time_t last_path_time;
+    uint8_t dest;
     struct session *next;
 };
 
@@ -23,7 +26,7 @@ typedef struct path_msg {
     uint8_t hold_priority;
     uint8_t flags;
     uint16_t lsp_id;
-    char name[16];
+    char name[32];
 } path_msg;
 
 /* Define resv_msg structure */
@@ -36,12 +39,12 @@ typedef struct resv_msg {
     uint8_t interval;
     uint32_t in_label;
     uint32_t out_label;
-    uint16_t lsp_id
+    uint16_t lsp_id;
 } resv_msg;
 
-typedef struct dbnode {
+typedef struct db_node {
     void *data;
-    struct dbnode *left, *right;
+    struct db_node *left, *right;
     int height;
 }db_node;
 
@@ -59,9 +62,10 @@ static inline int get_balance(db_node *node) {
 }
 
 typedef int (*cmp)(int, const void *);
-//db_node* insert_node(db_node *, path_msg *, cmp func);
+typedef int (*cmp1) (const void*, const void *);
+db_node* insert_node(db_node *, void *, cmp1 func);
 db_node* delete_node(db_node *, int, cmp func, int);
-//db_node* search_node(db_node *, path_msg *, cmp func);
+db_node* search_node(db_node *, int, cmp func);
 void free_tree(db_node *);
 void display_tree(db_node *);
 
@@ -71,4 +75,6 @@ db_node* path_tree_insert(db_node*, char[]);
 db_node* resv_tree_insert(db_node*, char[]);
 int compare_path_del(int , const void *);
 int compare_resv_del(int , const void *);
+int compare_path_insert(const void * , const void *);
+int compare_resv_insert(const void * , const void *);
 

@@ -1,12 +1,14 @@
 #include "rsvp_db.h"
+#include "rsvp_msg.h"
 #include "timer-event.h"
 
 struct session* sess = NULL;
 struct session* head = NULL;
 time_t now = 0;
+char nhip[16];
 
 	
-struct session* insert_session(struct session* sess, uint8_t t_id, char sender[], char receiver[], u_int8_t dest) {
+struct session* insert_session(struct session* sess, uint8_t t_id, char sender[], char receiver[], uint8_t dest) {
         now = time(NULL);
         printf("insert session\n");
         if(sess == NULL) {
@@ -82,11 +84,11 @@ struct session* delete_session(struct session* sess, char sender[], char receive
 
 
 int compare_path_insert(const void *a, const void *b) {
-	return (((path_msg *) a)->tunnel_id - ((path_msg *) b)->tunnel_id);
+    return (((path_msg *) a)->tunnel_id - ((path_msg *) b)->tunnel_id);
 }
 
 int compare_resv_insert(const void *a, const void *b) {
-        return (((resv_msg *) a)->tunnel_id - ((resv_msg *) b)->tunnel_id);
+    return (((resv_msg *) a)->tunnel_id - ((resv_msg *) b)->tunnel_id);
 }
 
 int compare_path_del(int id, const void *b) {
@@ -134,13 +136,13 @@ db_node* create_node(void *data) {
 }
 
 /* Insert a path_msg node */
-db_node* insert_node(db_node *node, void *data, int (*cmp)(const void *, const void *)) {
+db_node* insert_node(db_node *node, void *data, int (*cmp1)(const void *, const void *)) {
     if (!node) return create_node(data);
 
-    if (cmp(data, node->data) < 0)
-        node->left = insert_node(node->left, data, cmp);
-    else if (cmp(data, node->data) > 0)
-        node->right = insert_node(node->right, data, cmp);
+    if (cmp1(data, node->data) < 0)
+        node->left = insert_node(node->left, data, cmp1);
+    else if (cmp1(data, node->data) > 0)
+        node->right = insert_node(node->right, data, cmp1);
     else 
         return node; // Duplicate values not allowed
 
@@ -148,15 +150,15 @@ db_node* insert_node(db_node *node, void *data, int (*cmp)(const void *, const v
     int balance = get_balance(node);
 
     // Perform rotations if unbalanced
-    if (balance > 1 && cmp(data, node->left->data) < 0)
+    if (balance > 1 && cmp1(data, node->left->data) < 0)
         return right_rotate(node);
-    if (balance < -1 && cmp(data, node->right->data) > 0)
+    if (balance < -1 && cmp1(data, node->right->data) > 0)
         return left_rotate(node);
-    if (balance > 1 && cmp(data, node->left->data) > 0) {
+    if (balance > 1 && cmp1(data, node->left->data) > 0) {
         node->left = left_rotate(node->left);
         return right_rotate(node);
     }
-    if (balance < -1 && cmp(data, node->right->data) < 0) {
+    if (balance < -1 && cmp1(data, node->right->data) < 0) {
         node->right = right_rotate(node->right);
         return left_rotate(node);
     }
@@ -224,14 +226,18 @@ db_node* delete_node(db_node* node, int tunnel_id, int (*cmp)(int , const void *
 
 
 /* Search for a path_msg node */
-voiD* search_node(db_node *node, void *data, int (*cmp)(const void *, const void *)) {
-    if (!node || cmp(data, node->data) == 0)
-        return node->data;
+db_node* search_node(db_node *node, int data, int (*cmp)(int, const void *)) {
+    if (node == NULL) {
+        return node;
+    }
+    if (cmp(data, node->data) == 0)
+        return node;
 
-    if (cmp(data, node->data) < 0) 
+    if (cmp(data, node->data) < 0) { 
         return search_node(node->left, data, cmp);
-
-    return search_node(node->right, data, cmp);
+    } else {
+        return search_node(node->right, data, cmp);
+    }
 }
 
 /* Free a path tree */
@@ -272,10 +278,10 @@ db_node* path_tree_insert(db_node* path_tree, char buffer[]) {
     p->flags = session_attr_obj->flags;
     p->lsp_id = 1;
     strncpy(p->name, session_attr_obj->Name, sizeof(session_attr_obj->Name) - 1);
-    p->name[sizeof(p->name) - 1] = '\0'
+    p->name[sizeof(p->name) - 1] = '\0';
  
     //get and assign nexthop
-    get_nexthop(inet_ntoa(p->dst_ip), nhip);
+    get_nexthop(inet_ntoa(p->dest_ip), nhip);
     if(strcmp(nhip, " ") == 0)
         inet_pton(AF_INET, "0.0.0.0", &p->nexthop_ip);
     else    
@@ -296,11 +302,11 @@ db_node* resv_tree_insert(db_node* resv_tree, char buffer[]) {
     p->dest_ip = (session_obj->dst_ip);
     p->interval = time_obj->interval;
 
-    get_nexthop(inet_ntoa(p->dst_ip), nhip);
+    get_nexthop(inet_ntoa(p->dest_ip), nhip);
     if(strcmp(nhip, " ") == 0)
-	p->label = htonl(3);
+	p->in_label = htonl(3);
     else
-	p->label = hton(100);  //get the label from the label management;	
+	p->in_label = htonl(100);  //get the label from the label management;	
 
     //get and assign nexthop
     get_nexthop(inet_ntoa(p->src_ip), nhip);

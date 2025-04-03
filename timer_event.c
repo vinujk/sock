@@ -58,7 +58,7 @@ void path_timer_handler(union sigval sv) {
                         	inet_pton(AF_INET, temp->receiver, &receiver_ip);
 				
 				// Send RSVP-TE PATH Message
-				send_path_message(sock, sender_ip, receiver_ip);
+				send_path_message(sock, sender_ip, receiver_ip, temp->tunnel_id);
 			} else {
 				printf("not received resv msg\n");
 			}
@@ -101,7 +101,7 @@ void resv_timer_handler(union sigval sv) {
                 	        inet_pton(AF_INET, temp->receiver, &receiver_ip);
 
 				// Send RSVP-TE RESV Message
-                       		send_resv_message(sock, sender_ip, receiver_ip);
+                       		send_resv_message(sock, sender_ip, receiver_ip, temp->tunnel_id);
 			} else {
                                 printf("not received path msg\n");
                         }
