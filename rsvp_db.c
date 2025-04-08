@@ -312,6 +312,9 @@ db_node* path_tree_insert(db_node* path_tree, char buffer[]) {
         else {
             inet_pton(AF_INET, nhip, &p->nexthop_ip);
         }
+    } else {
+	printf("No route to destination\n");
+	return NULL;
     }
 
     return insert_node(path_tree, p, compare_path_insert);
@@ -343,7 +346,10 @@ db_node* resv_tree_insert(db_node* resv_tree, char buffer[]) {
     	else { 
             inet_pton(AF_INET, nhip, &p->nexthop_ip);	
         }
+    } else {
+        printf("No route to Source\n");
+        return NULL;
     }
+
     return insert_node(resv_tree, p, compare_resv_insert);
 }
-

@@ -91,7 +91,10 @@ int main() {
             } else {
                 inet_pton(AF_INET, nhip, &path->nexthop_ip);
 	    }
- 	}	
+ 	} else {
+		printf("no route to destination\n");
+		continue;
+	}	
 
         //path_msg path;
         path->tunnel_id = tunnel_id;

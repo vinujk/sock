@@ -109,8 +109,11 @@ void receive_path_message(int sock, char buffer[], struct sockaddr_in sender_add
 
     db_node *path_node = search_node(path_tree, session_obj->tunnel_id, compare_path_del);
     if(path_node == NULL){
-        path_tree = path_tree_insert(path_tree, buffer);
-        path_node = search_node(path_tree, session_obj->tunnel_id, compare_path_del);
+        temp = path_tree_insert(path_tree, buffer);
+ 	if(temp != NULL) {
+		path_tree = temp;
+	        path_node = search_node(path_tree, session_obj->tunnel_id, compare_path_del);
+	}
     }
     display_tree(path_tree, 1);
 
@@ -119,20 +122,22 @@ void receive_path_message(int sock, char buffer[], struct sockaddr_in sender_add
     inet_pton(AF_INET, dst_ip, &receiver_ip);
     if(dst_reached(dst_ip)) {*/
 
-    path_msg *p = (path_msg*)path_node->data;
-    if(strcmp(inet_ntoa(p->nexthop_ip), "0.0.0.0") == 0) {
-        printf("****reached the destiantion, end oF rsvp tunnel***\n");
+    if(path_node == NULL) {
+    	path_msg *p = (path_msg*)path_node->data;
+    	if(strcmp(inet_ntoa(p->nexthop_ip), "0.0.0.0") == 0) {
+       		printf("****reached the destiantion, end oF rsvp tunnel***\n");
 
-        db_node *resv_node = search_node(resv_tree, session_obj->tunnel_id, compare_resv_del);
-        if(resv_node == NULL){
-            resv_tree = resv_tree_insert(resv_tree, buffer);
-        }
-        display_tree(resv_tree, 0);
+	        db_node *resv_node = search_node(resv_tree, session_obj->tunnel_id, compare_resv_del);
+       		if(resv_node == NULL){
+            		resv_tree = resv_tree_insert(resv_tree, buffer);
+        	}
+        	display_tree(resv_tree, 0);
 
-        send_resv_message(sock, session_obj->tunnel_id);
-    } else {
-        printf("send path msg to nexthop \n");
-        send_path_message(sock, session_obj->tunnel_id);
+        	send_resv_message(sock, session_obj->tunnel_id);
+    	} else {
+        	printf("send path msg to nexthop \n");
+        	send_path_message(sock, session_obj->tunnel_id);
+	}
     }
 }
 
@@ -256,8 +261,11 @@ void receive_resv_message(int sock, char buffer[], struct sockaddr_in sender_add
     struct session_object *session_obj = (struct session_object*)(buffer + START_RECV_SESSION_OBJ);
     db_node *resv_node = search_node(resv_tree, session_obj->tunnel_id, compare_resv_del);
     if(resv_node == NULL){
-        resv_tree = resv_tree_insert(resv_tree, buffer);
-        resv_node = search_node(resv_tree, session_obj->tunnel_id, compare_resv_del);
+        temp = resv_tree_insert(resv_tree, buffer);
+	if(temp != NULL) {
+		resv_tree = NULL;
+        	resv_node = search_node(resv_tree, session_obj->tunnel_id, compare_resv_del);
+	}
     }
     display_tree(resv_tree, 0);
 
@@ -268,14 +276,15 @@ void receive_resv_message(int sock, char buffer[], struct sockaddr_in sender_add
     inet_pton(AF_INET, dst_ip, &receiver_ip);
     if(dst_reached(src_ip)) {*/
 
-    resv_msg *p = (resv_msg*)resv_node->data;
-    if(strcmp(inet_ntoa(p->nexthop_ip),"0.0.0.0") == 0) {
-        printf("****reached the source, end oF rsvp tunnel***\n");
-    } else {
-        printf("send resv msg to nexthop \n");
-        send_resv_message(sock, session_obj->tunnel_id); 
+    if(resv_node == NULL) {
+    	resv_msg *p = (resv_msg*)resv_node->data;
+    	if(strcmp(inet_ntoa(p->nexthop_ip),"0.0.0.0") == 0) {
+       	    printf("****reached the source, end oF rsvp tunnel***\n");
+    	} else {
+            printf("send resv msg to nexthop \n");
+            send_resv_message(sock, session_obj->tunnel_id); 
+    	}
     }
-
 }
 
 
