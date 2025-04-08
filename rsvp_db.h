@@ -4,11 +4,12 @@
 #include<stdint.h>
 #include<arpa/inet.h>
 #include<netinet/in.h>
+#include<time.h>
 
 struct session {
     char sender[16];
     char receiver[16];
-    uint8_t tunnel_id;
+    uint16_t tunnel_id;
     time_t last_path_time;
     uint8_t dest;
     struct session *next;
@@ -19,7 +20,7 @@ typedef struct path_msg {
     struct in_addr src_ip;
     struct in_addr dest_ip;
     struct in_addr nexthop_ip;
-    uint8_t tunnel_id;
+    uint16_t tunnel_id;
     uint8_t IFH;
     uint8_t interval;
     uint8_t setup_priority;
@@ -34,7 +35,7 @@ typedef struct resv_msg {
     struct in_addr src_ip;
     struct in_addr dest_ip;
     struct in_addr nexthop_ip;
-    uint8_t tunnel_id;
+    uint16_t tunnel_id;
     uint8_t IFH;
     uint8_t interval;
     uint32_t in_label;
@@ -67,7 +68,7 @@ db_node* insert_node(db_node *, void *, cmp1 func);
 db_node* delete_node(db_node *, int, cmp func, int);
 db_node* search_node(db_node *, int, cmp func);
 void free_tree(db_node *);
-void display_tree(db_node *);
+void display_tree(db_node *, int);
 
 struct session* insert_session(struct session*, uint8_t, char[], char[], uint8_t);
 struct session* delete_session(struct session*, char[], char[]);
