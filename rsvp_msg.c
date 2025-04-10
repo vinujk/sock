@@ -297,7 +297,7 @@ void receive_resv_message(int sock, char buffer[], struct sockaddr_in sender_add
         } else {
              if(htonl(p->out_label) == 3) {
                  snprintf(command, sizeof(command), "ip -M route add %d via inet %s dev %s",
-                                ntohl(p->out_label), n_ip, p->dev);
+                                ntohl(p->in_label), n_ip, pa`->dev);
                   printf(" ========== 2 %s - ", command);
                  system(command);
              } else {
