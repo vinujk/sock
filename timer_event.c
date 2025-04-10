@@ -56,13 +56,14 @@ void path_timer_handler(union sigval sv) {
             send_path_message(sock, temp->tunnel_id);
         }
 
+
         if((now - temp->last_path_time) > TIMEOUT) {
-            if(!temp->dest){
-                printf("RSVP path session expired: %s\t-->%s\n",temp->sender, temp->receiver);
-                resv_head = delete_session(temp, temp->sender, temp->receiver);
-                resv_tree = delete_node(resv_tree, temp->tunnel_id, compare_resv_del, 0);
+		if(!temp->dest) {
+			printf("RSVP path session expired: %s\t-->%s\n",temp->sender, temp->receiver);
+			resv_head = delete_session(temp, temp->sender, temp->receiver);
+		}
+		resv_tree = delete_node(resv_tree, temp->tunnel_id, compare_resv_del, 0);
                 display_tree(resv_tree, 0);
-            }
         } else if((now - temp->last_path_time) < INTERVAL) {
             printf(" less than 30 sec\n");
             temp = temp->next;

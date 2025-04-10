@@ -9,7 +9,7 @@ char nhip[16];
 char source_ip[16];
 char destination_ip[16];
 char next_hop_ip[16];
-
+char dev[16];
 
 struct session* insert_session(struct session* sess, uint8_t t_id, char sender[], char receiver[], uint8_t dest) {
     now = time(NULL);
@@ -32,7 +32,7 @@ struct session* insert_session(struct session* sess, uint8_t t_id, char sender[]
             if((strcmp(sess->sender, sender) == 0) &&
                     (strcmp(sess->receiver, receiver) == 0)) {
                 sess->last_path_time = now;
-                return NULL;
+                return sess;
             }
             local = sess;
             sess=sess->next;
@@ -179,7 +179,7 @@ db_node* min_node(db_node* node) {
 
 /* Delete a node from path_msg AVL tree */
 db_node* delete_node(db_node* node, int tunnel_id, int (*cmp)(int , const void *), int msg) {
-    if (node == NULL) return;
+    if (node == NULL) return NULL;
 
     if (cmp(tunnel_id, node->data) < 0)
         node->left = delete_node(node->left, tunnel_id, cmp, msg);
@@ -192,8 +192,14 @@ db_node* delete_node(db_node* node, int tunnel_id, int (*cmp)(int , const void *
             if (temp == NULL) {
                 temp = node;
                 node = NULL;
-            } else
+            } else {
                 *node = *temp; // Copy the contents
+	    }
+	    if(msg) {
+	        free((path_msg*) temp->data);
+	    } else {
+	        free((resv_msg*) temp->data);
+	    }
             free(temp);
         } else {
             db_node* temp = min_node(node->right);
@@ -271,13 +277,14 @@ void display_tree(db_node *node, int msg) {
         inet_ntop(AF_INET, &r->src_ip, source_ip, 16);
         inet_ntop(AF_INET, &r->dest_ip, destination_ip, 16);
         inet_ntop(AF_INET, &r->nexthop_ip, next_hop_ip, 16);
-        printf("Tunnel ID: %u, Src: %s, Dest: %s, Next Hop: %s, In_label: %d, Out_label: %d\n",
+        printf("Tunnel ID: %u, Src: %s, Dest: %s, Next Hop: %s, prefix_len: %d, In_label: %d, Out_label: %d\n",
                 r->tunnel_id,
                 source_ip,
                 destination_ip,
                 next_hop_ip,
-                htonl(r->in_label),
-                htonl(r->out_label));
+                r->prefix_len,
+                ntohl(r->in_label),
+                ntohl(r->out_label));
     }
     display_tree(node->right, msg);
 }
@@ -286,10 +293,13 @@ void display_tree(db_node *node, int msg) {
 //-------------------------------------
 
 db_node* path_tree_insert(db_node* path_tree, char buffer[]) {
-    struct session_object *session_obj = (struct session_object*)(buffer + START_SENT_SESSION_OBJ + 20);
-    struct hop_object *hop_obj = (struct hop_object*)(buffer + START_SENT_HOP_OBJ + 20);
-    struct time_object *time_obj = (struct time_object*)(buffer + START_SENT_TIME_OBJ + 20);
-    struct session_attr_object *session_attr_obj = (struct session_attr_object*)(buffer + START_SENT_SESSION_ATTR_OBJ + 20);
+    uint32_t ifh = 0;
+    uint8_t prefix_len = 0;
+
+    struct session_object *session_obj = (struct session_object*)(buffer + START_RECV_SESSION_OBJ);
+    struct hop_object *hop_obj = (struct hop_object*)(buffer + START_RECV_HOP_OBJ);
+    struct time_object *time_obj = (struct time_object*)(buffer + START_RECV_TIME_OBJ);
+    struct session_attr_object *session_attr_obj = (struct session_attr_object*)(buffer + START_RECV_SESSION_ATTR_OBJ);
 
     path_msg *p = malloc(sizeof(path_msg));
 
@@ -304,26 +314,34 @@ db_node* path_tree_insert(db_node* path_tree, char buffer[]) {
     strncpy(p->name, session_attr_obj->Name, sizeof(session_attr_obj->Name) - 1);
     p->name[sizeof(p->name) - 1] = '\0';
 
-    //get and assign nexthop
-    if(get_nexthop(inet_ntoa(p->dest_ip), nhip)) {
-       if(strcmp(nhip, " ") == 0) {
+    if(get_nexthop(inet_ntoa(p->dest_ip), nhip, &prefix_len, dev, &ifh)) {
+        strcpy(p->dev, dev);
+        p->IFH = ifh;
+        if(strcmp(nhip, " ") == 0) {
             inet_pton(AF_INET, "0.0.0.0", &p->nexthop_ip);
+            p->prefix_len = prefix_len;
         }
         else {
             inet_pton(AF_INET, nhip, &p->nexthop_ip);
+            p->prefix_len = prefix_len;
         }
     } else {
-	printf("No route to destination\n");
-	return NULL;
+        printf("No route to destination\n");
+        return NULL;
     }
 
     return insert_node(path_tree, p, compare_path_insert);
 }
 
-db_node* resv_tree_insert(db_node* resv_tree, char buffer[]) {
-    struct session_object *session_obj = (struct session_object*)(buffer + START_SENT_SESSION_OBJ + 20);
-    struct hop_object *hop_obj = (struct hop_object*)(buffer + START_SENT_HOP_OBJ + 20);
-    struct time_object *time_obj = (struct time_object*)(buffer + START_SENT_TIME_OBJ + 20);
+db_node* resv_tree_insert(db_node* resv_tree, char buffer[], uint8_t dst_reach) {
+
+    uint32_t ifh = 0;
+    uint8_t prefix_len = 0;
+
+    struct session_object *session_obj = (struct session_object*)(buffer + START_RECV_SESSION_OBJ);
+    struct hop_object *hop_obj = (struct hop_object*)(buffer + START_RECV_HOP_OBJ);
+    struct time_object *time_obj = (struct time_object*)(buffer + START_RECV_TIME_OBJ);
+    struct label_object *label_obj = (struct label_object*)(buffer + START_RECV_LABEL);
 
     resv_msg *p = malloc(sizeof(resv_msg));
 
@@ -332,19 +350,30 @@ db_node* resv_tree_insert(db_node* resv_tree, char buffer[]) {
     p->dest_ip = (session_obj->dst_ip);
     p->interval = time_obj->interval;
 
-    get_nexthop(inet_ntoa(p->dest_ip), nhip);
-    if(strcmp(nhip, " ") == 0)
+    if(dst_reach) {
         p->in_label = htonl(3);
-    else
-        p->in_label = htonl(100);  //get the label from the label management;	
+        p->out_label = htonl(-1);
+	p->prefix_len = prefix_len;
+    }
 
     //get and assign nexthop
-    if(get_nexthop(inet_ntoa(p->src_ip), nhip)) {
-	if(strcmp(nhip, " ") == 0) {
+    if (get_nexthop(inet_ntoa(p->src_ip), nhip, &prefix_len,dev, &ifh)) {
+        strcpy(p->dev, dev);
+        p->IFH = ifh;
+        p->prefix_len = prefix_len;
+	printf("prefix_len = %d\n", prefix_len);
+        if(!dst_reach) {
+                p->out_label = label_obj->label;
+        }
+        if(strcmp(nhip, " ") == 0) {
+            if(!dst_reach)
+                p->in_label = htonl(-1);
             inet_pton(AF_INET, "0.0.0.0", &p->nexthop_ip);
         }
-    	else { 
-            inet_pton(AF_INET, nhip, &p->nexthop_ip);	
+        else {
+            if(!dst_reach)
+                p->in_label = htonl(100);
+            inet_pton(AF_INET, nhip, &p->nexthop_ip);
         }
     } else {
         printf("No route to Source\n");
