@@ -154,6 +154,7 @@ path_msg* create_path(const char *args, char *response, size_t response_size) {
     path->src_ip.s_addr = 0;
     path->dest_ip.s_addr = 0;
     path->nexthop_ip.s_addr = 0;
+    inet_pton(AF_INET, "0.0.0.0", &path->p_nexthop_ip);
     path->interval = 30;
     path->setup_priority = 7;
     path->hold_priority = 7;

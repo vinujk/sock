@@ -122,7 +122,7 @@ void receive_path_message(int sock, char buffer[], struct sockaddr_in sender_add
     pthread_mutex_lock(&path_tree_mutex);
     db_node *path_node = search_node(path_tree, ntohs(session_obj->tunnel_id), compare_path_del);
     if(path_node == NULL){
-        temp = path_tree_insert(path_tree, buffer);
+        temp = path_tree_insert(path_tree, buffer, sender_addr.sin_addr);
         if(temp != NULL) {
             path_tree = temp;
             path_node = search_node(path_tree, ntohs(session_obj->tunnel_id), compare_path_del);
@@ -302,7 +302,6 @@ void receive_resv_message(int sock, char buffer[], struct sockaddr_in sender_add
 
         inet_ntop(AF_INET, &pa->dest_ip, d_ip, 16);
         inet_ntop(AF_INET, &pa->nexthop_ip, n_ip, 16);
-
 
         if(strcmp(inet_ntoa(p->nexthop_ip),"0.0.0.0") == 0) {
             printf("****reached the source, end oF rsvp tunnel***\n");

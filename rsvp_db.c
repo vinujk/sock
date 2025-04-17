@@ -378,7 +378,7 @@ void display_tree_debug(db_node *node, uint8_t msg) {
 //Fetch information from receive buffer
 //-------------------------------------
 
-db_node* path_tree_insert(db_node* path_tree, char buffer[]) {
+db_node* path_tree_insert(db_node* path_tree, char buffer[], struct in_addr p_nhip) {
     uint32_t ifh = 0;
     uint8_t prefix_len = 0;
     char next_hop_ip[16];
@@ -394,6 +394,7 @@ db_node* path_tree_insert(db_node* path_tree, char buffer[]) {
     p->tunnel_id = htons(session_obj->tunnel_id);
     p->src_ip = (session_obj->src_ip);
     p->dest_ip = (session_obj->dst_ip);
+    p->p_nexthop_ip = p_nhip;
     p->interval = time_obj->interval;
     p->setup_priority = session_attr_obj->setup_prio;
     p->hold_priority = session_attr_obj->hold_prio;
@@ -421,7 +422,7 @@ db_node* path_tree_insert(db_node* path_tree, char buffer[]) {
     return insert_node(path_tree, p, compare_path_insert);
 }
 
-db_node* resv_tree_insert(db_node* resv_tree, char buffer[], uint8_t dst_reach) {
+db_node* resv_tree_insert(db_node* resv_tree, char buffer[], uint8_t path_dst_reach) {
 
     uint32_t ifh = 0;
     uint8_t prefix_len = 0;
@@ -431,42 +432,52 @@ db_node* resv_tree_insert(db_node* resv_tree, char buffer[], uint8_t dst_reach) 
     struct time_object *time_obj = (struct time_object*)(buffer + START_RECV_TIME_OBJ);
     struct label_object *label_obj = (struct label_object*)(buffer + START_RECV_LABEL);
 
-    resv_msg *p = malloc(sizeof(resv_msg));
+    path_msg *pa = NULL;
+    db_node *path_node = search_node(path_tree, ntohs(session_obj->tunnel_id), compare_path_del);                 
+    if(path_node == NULL) {
+	printf("Node not found with tunnel id = %d\n", ntohs(session_obj->tunnel_id));
+	return path_node;
+    } else {
+    	pa = (path_msg*)path_node->data;
+    }
+
+    resv_msg *p = (resv_msg*)malloc(sizeof(resv_msg));
 
     p->tunnel_id = ntohs(session_obj->tunnel_id);
     p->src_ip = (session_obj->src_ip);
     p->dest_ip = (session_obj->dst_ip);
+    p->nexthop_ip = pa->p_nexthop_ip; 
     p->interval = time_obj->interval;
 
-    if(dst_reach) {
+
+    if(path_dst_reach) {
         p->in_label = (3);
         p->out_label = (-1);
-	p->prefix_len = prefix_len;
+//	p->prefix_len = prefix_len;
     }
 
-    //get and assign nexthop
-    if (get_nexthop(inet_ntoa(p->src_ip), nhip, &prefix_len,dev, &ifh)) {
+/*    if (get_nexthop(inet_ntoa(p->src_ip), nhip, &prefix_len,dev, &ifh)) {
         strcpy(p->dev, dev);
         p->IFH = ifh;
         p->prefix_len = prefix_len;
 	printf("prefix_len = %d\n", prefix_len);
-        if(!dst_reach) {
+*/        if(!path_dst_reach) {
                 p->out_label = ntohl(label_obj->label);
         }
-        if(strcmp(nhip, " ") == 0) {
-            if(!dst_reach)
+        if(strcmp(inet_ntoa(p->nexthop_ip), "0.0.0.0") == 0) {
+            if(!path_dst_reach)
                 p->in_label = (-1);
-            inet_pton(AF_INET, "0.0.0.0", &p->nexthop_ip);
+	    //inet_pton(AF_INET, nhip, &p->nexthop_ip);
         }
         else {
-            if(!dst_reach)
+            if(!path_dst_reach)
                 p->in_label = allocate_label();
-            inet_pton(AF_INET, nhip, &p->nexthop_ip);
+            //inet_pton(AF_INET, nhip, &p->nexthop_ip);
         }
-    } else {
+    /*} else {
         printf("No route to Source\n");
         return NULL;
-    }
+    }*/
 
     return insert_node(resv_tree, p, compare_resv_insert);
 }

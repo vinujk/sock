@@ -26,6 +26,7 @@ typedef struct path_msg {
     struct in_addr src_ip;
     struct in_addr dest_ip;
     struct in_addr nexthop_ip;
+    struct in_addr p_nexthop_ip;
     uint16_t tunnel_id;
     uint32_t IFH;
     uint32_t interval;
@@ -86,7 +87,7 @@ void display_tree(db_node * , uint8_t , char * , size_t);
 struct session* search_session(struct session*, uint16_t);
 struct session* insert_session(struct session*, uint8_t, char[], char[], uint8_t);
 struct session* delete_session(struct session*, struct session*);
-db_node* path_tree_insert(db_node*, char[]);
+db_node* path_tree_insert(db_node*, char[], struct in_addr);
 db_node* resv_tree_insert(db_node*, char[], uint8_t);
 int compare_path_del(uint16_t , const void *);
 int compare_resv_del(uint16_t , const void *);
