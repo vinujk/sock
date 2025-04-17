@@ -32,7 +32,7 @@ void delete_timer(timer_t *timer_id) {
         perror("timer delete failed\n");
         exit(EXIT_FAILURE);
     }
-    free(timer_id);
+//    free(timer_id);
     printf(" timer delete sucessfully %p \n", timer_id);
 }
 
