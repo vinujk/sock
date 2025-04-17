@@ -259,16 +259,31 @@ db_node* search_node(db_node *node, uint16_t data, int (*cmp)(uint16_t, const vo
 }
 
 
-void free_labels(db_node *node, uint16_t tunnel_id) {
+void update_tables(db_node *path_node, db_node *resv_node, uint16_t tunnel_id) {
 
 	char d_ip[16], n_ip[16], command[200];
 
-	db_node* temp = search_node(node, tunnel_id, compare_resv_del);
-	resv_msg* p = (resv_msg*)temp->data;
+	db_node* temp1 = search_node(resv_node, tunnel_id, compare_resv_del);
+	resv_msg* p = (resv_msg*)temp1->data;
+
+	db_node* temp2 = search_node(path_node, tunnel_id, compare_resv_del);
+        path_msg* pa = (path_msg*)temp2->data;
+
+        //update path table
+	if(get_nexthop(inet_ntoa(pa->dest_ip), nhip, &pa->prefix_len, dev, &pa->IFH)) {
+	        if (strcmp(nhip, " ") == 0) {
+       		     inet_pton(AF_INET, "0.0.0.0", &pa->nexthop_ip);
+	        } else {
+       		     inet_pton(AF_INET, nhip, &pa->nexthop_ip);
+	        }
+	} else {
+		printf("No route to destiantion %s\n", inet_ntoa(pa->dest_ip));
+	}
 
 	inet_ntop(AF_INET, &p->dest_ip, d_ip, 16);
         inet_ntop(AF_INET, &p->nexthop_ip, n_ip, 16);
 
+	//update LFIB table
 	if(p->in_label == -1 && (p->out_label >= BASE_LABEL)) {
 		//push label delete
 		snprintf(command, sizeof(command), "ip route del %s/%d encap mpls %d via %s dev %s",
@@ -282,18 +297,18 @@ void free_labels(db_node *node, uint16_t tunnel_id) {
                 system(command);
 	} else if(p->in_label > BASE_LABEL && (p->out_label == IMPLICIT_NULL || p->out_label == EXPLICIT_NULL)) {
 		//explicit label =  3 delete
-		snprintf(command, sizeof(command), "ip -M route del %d as %d via inet %s",
-                        (p->in_label), (p->out_label), n_ip);
-                printf(" ========== 3 %s - ", command);
+		snprintf(command, sizeof(command), "ip -M route add %d via inet %s dev %s",
+                        (p->in_label), n_ip, pa->dev);
+                printf(" ========== 2 %s - ", command);
                 system(command);
 	} else {
 		//not a valid label
 	}
 
+	//update labels
 	free_label(p->in_label);
 }
 	
-	 
 
 /* Free a path tree */
 void free_tree(db_node *node) {

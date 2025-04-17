@@ -32,7 +32,7 @@ void delete_timer(timer_t *timer_id) {
         perror("timer delete failed\n");
         exit(EXIT_FAILURE);
     }
-//    free(timer_id);
+    timer_id = 0;
     printf(" timer delete sucessfully %p \n", timer_id);
 }
 
@@ -59,7 +59,8 @@ void path_timer_handler(union sigval sv) {
                 printf("RSVP path session expired: %s\t-->%s\n",temp->sender, temp->receiver);
                 resv_head = delete_session(resv_head, temp);
             }
-            free_labels(resv_tree, temp->tunnel_id);
+	    //<path tear message>
+	    update_tables(path_tree, resv_tree, temp->tunnel_id);
             resv_tree = delete_node(resv_tree, temp->tunnel_id, compare_resv_del, 0);
             display_tree_debug(resv_tree, 0);
         } else if((now - temp->last_path_time) < INTERVAL) {

@@ -215,7 +215,7 @@ void send_path_message(int sock, uint16_t tunnel_id) {
 
     //session attribute object for PATH msg
     session_attr_obj->class_obj.class_num = 207;
-    session_attr_obj->class_obj.c_type = 1;
+    session_attr_obj->class_obj.c_type = 7;
     session_attr_obj->class_obj.length = htons(sizeof(struct session_attr_object));
     session_attr_obj->setup_prio = p->setup_priority;
     session_attr_obj->hold_prio = p->hold_priority;

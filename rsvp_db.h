@@ -79,7 +79,7 @@ db_node* insert_node(db_node *, void *, cmp1 func);
 db_node* delete_node(db_node *, uint16_t, cmp func, uint8_t);
 db_node* search_node(db_node *, uint16_t, cmp func);
 
-void free_labels(db_node*, uint16_t);
+void update_tables(db_node*, db_node*, uint16_t);
 void free_tree(db_node *);
 void display_tree_debug(db_node *, uint8_t);
 void display_tree(db_node * , uint8_t , char * , size_t);
