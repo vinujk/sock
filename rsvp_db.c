@@ -437,7 +437,7 @@ db_node* path_tree_insert(db_node* path_tree, char buffer[], struct in_addr p_nh
     return insert_node(path_tree, p, compare_path_insert);
 }
 
-db_node* resv_tree_insert(db_node* resv_tree, char buffer[], uint8_t path_dst_reach) {
+db_node* resv_tree_insert(db_node* resv_tree, char buffer[], struct in_addr p_nhip, uint8_t path_dst_reach) {
 
     uint32_t ifh = 0;
     uint8_t prefix_len = 0;
@@ -447,23 +447,13 @@ db_node* resv_tree_insert(db_node* resv_tree, char buffer[], uint8_t path_dst_re
     struct time_object *time_obj = (struct time_object*)(buffer + START_RECV_TIME_OBJ);
     struct label_object *label_obj = (struct label_object*)(buffer + START_RECV_LABEL);
 
-    path_msg *pa = NULL;
-    db_node *path_node = search_node(path_tree, ntohs(session_obj->tunnel_id), compare_path_del);                 
-    if(path_node == NULL) {
-	printf("Node not found with tunnel id = %d\n", ntohs(session_obj->tunnel_id));
-	return path_node;
-    } else {
-    	pa = (path_msg*)path_node->data;
-    }
-
     resv_msg *p = (resv_msg*)malloc(sizeof(resv_msg));
 
     p->tunnel_id = ntohs(session_obj->tunnel_id);
     p->src_ip = (session_obj->src_ip);
     p->dest_ip = (session_obj->dst_ip);
-    p->nexthop_ip = pa->p_nexthop_ip; 
+    p->nexthop_ip = p_nhip; 
     p->interval = time_obj->interval;
-
 
     if(path_dst_reach) {
         p->in_label = (3);

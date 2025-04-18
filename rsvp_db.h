@@ -88,7 +88,7 @@ struct session* search_session(struct session*, uint16_t);
 struct session* insert_session(struct session*, uint8_t, char[], char[], uint8_t);
 struct session* delete_session(struct session*, struct session*);
 db_node* path_tree_insert(db_node*, char[], struct in_addr);
-db_node* resv_tree_insert(db_node*, char[], uint8_t);
+db_node* resv_tree_insert(db_node*, char[], struct in_addr, uint8_t);
 int compare_path_del(uint16_t , const void *);
 int compare_resv_del(uint16_t , const void *);
 int compare_path_insert(const void * , const void *);
