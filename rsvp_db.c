@@ -38,8 +38,10 @@ struct session* insert_session(struct session* sess, uint8_t t_id, char sender[]
     printf("insert session\n");
     if(sess == NULL) {
         struct session *temp = (struct session*)malloc(sizeof(struct session));
-        if(temp < 0)
+        if(temp < 0){
             printf("cannot allocate dynamic memory]n");
+	    return NULL;
+	}
 
         temp->last_path_time = now;
         strcpy(temp->sender, sender);

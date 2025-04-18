@@ -142,9 +142,10 @@ void receive_path_message(int sock, char buffer[], struct sockaddr_in sender_add
                 temp = resv_tree_insert(resv_tree, buffer, p->p_nexthop_ip, 1);
                 if(temp != NULL) {
                     resv_tree = temp;
+		    display_tree_debug(resv_tree, 0);
                 }
             }
-            display_tree_debug(resv_tree, 0);
+	    
             pthread_mutex_unlock(&resv_tree_mutex);
 
             send_resv_message(sock, ntohs(session_obj->tunnel_id));
@@ -295,9 +296,9 @@ void receive_resv_message(int sock, char buffer[], struct sockaddr_in sender_add
         if(temp != NULL) {
             resv_tree = temp;
             resv_node = search_node(resv_tree, ntohs(session_obj->tunnel_id), compare_resv_del);
+	    display_tree_debug(resv_tree, 0);
         }
     }
-    display_tree_debug(resv_tree, 0);
     pthread_mutex_unlock(&resv_tree_mutex);
 
     //check whether we have reached the head of RSVP tunnel
@@ -350,12 +351,15 @@ int dst_reached(char ip[]) {
     uint8_t prefix_len = 0;
     char dev[16];
 
-    get_nexthop(ip, nhip, &prefix_len, dev, &ifh); 
+    if(get_nexthop(ip, nhip, &prefix_len, dev, &ifh)) { 
     //printf("next hop is %s\n", nhip);
-    if(strcmp(nhip, " ") == 0)
-        return 1;
-    else 
-        return 0;
+    	if(strcmp(nhip, " ") == 0)
+        	return 1;
+    	else 
+        	return 0;
+    } else {
+	return -1;
+    } 
 }
 
 

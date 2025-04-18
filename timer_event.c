@@ -62,7 +62,8 @@ void path_timer_handler(union sigval sv) {
 	    //<path tear message>
 	    update_tables(path_tree, resv_tree, temp->tunnel_id);
             resv_tree = delete_node(resv_tree, temp->tunnel_id, compare_resv_del, 0);
-            display_tree_debug(resv_tree, 0);
+	    if(resv_tree != NULL)
+            	display_tree_debug(resv_tree, 0);
         } else if((now - temp->last_path_time) < INTERVAL) {
             printf(" less than 30 sec\n");
             temp = temp->next;
@@ -99,7 +100,8 @@ void resv_timer_handler(union sigval sv) {
             printf("RSVP resv session expired: %s\t-->%s\n",temp->sender, temp->receiver);
             path_tree = delete_node(path_tree, temp->tunnel_id, compare_path_del, 1);
             path_head = delete_session(path_head, temp);
-            display_tree_debug(path_tree, 1);
+	    if(path_tree != NULL)
+	            display_tree_debug(path_tree, 1);
         } else if((now - temp->last_path_time) < INTERVAL) {
             printf(" less than 30 sec\n");
             temp = temp->next;

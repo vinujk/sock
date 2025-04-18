@@ -62,10 +62,15 @@ void* receive_thread(void* arg) {
                 get_ip(buffer, sender_ip, receiver_ip, &tunnel_id);
                 temp = search_session(path_head, tunnel_id);
 		if(temp == NULL) {
-			reached = dst_reached(receiver_ip);
+			if((reached = dst_reached(receiver_ip)) == -1) {
+				printf(" No route to destiantion %s\n",receiver_ip);
+				return;
+			}
 
 			pthread_mutex_lock(&path_list_mutex);
 	                path_head = insert_session(path_head, tunnel_id, sender_ip, receiver_ip, reached);
+			if(path_head == NULL)
+				return;
                 	pthread_mutex_unlock(&path_list_mutex);
 		}
 		temp = NULL;
@@ -84,10 +89,15 @@ void* receive_thread(void* arg) {
 		get_ip(buffer, sender_ip, receiver_ip, &tunnel_id);
                 temp = search_session(resv_head, tunnel_id);
                 if(temp == NULL) {
-                        reached = dst_reached(sender_ip);
+			if((reached = dst_reached(sender_ip)) == -1) {
+                                printf(" No route to destiantion %s\n",sender_ip);
+                                return;
+                        }
 
                         pthread_mutex_lock(&resv_list_mutex);
                         resv_head = insert_session(resv_head, tunnel_id, sender_ip, receiver_ip, reached);
+			if(resv_head == NULL)
+                                return;
                         pthread_mutex_unlock(&resv_list_mutex);
                 }
 		temp = NULL;

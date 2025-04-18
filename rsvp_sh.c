@@ -70,6 +70,8 @@ int rsvp_add_config(const char* args, char* response, size_t response_size) {
     log_message("Processing tunnel %d in rsvp_add_config", path->tunnel_id);
     log_message("Calling insert_node for tunnel %d", path->tunnel_id);
     path_tree = insert_node(path_tree, path, compare_path_insert);
+    if(path_tree == NULL)
+	return;
     log_message("insert_node completed for tunnel %d", path->tunnel_id);
 
     // Add to path_head for timer refreshes
@@ -79,6 +81,8 @@ int rsvp_add_config(const char* args, char* response, size_t response_size) {
     
     log_message("Calling insert_session for tunnel %d", path->tunnel_id);
     resv_head = insert_session(resv_head, path->tunnel_id, sender_ip, receiver_ip, 1);
+    if(resv_head == NULL)
+	return;
     
     log_message("dest ip/receiver ip %s", receiver_ip);
     log_message("insert_session completed for tunnel %d", path->tunnel_id);
@@ -241,12 +245,17 @@ path_msg* create_path(const char *args, char *response, size_t response_size) {
     // Set nexthop based on path type
     char nhip[16];
     //if (path->path_type == 0) { // Dynamic
-        get_nexthop(inet_ntoa(path->dest_ip), nhip, &path->prefix_len, dev, &path->IFH);
+    if(get_nexthop(inet_ntoa(path->dest_ip), nhip, &path->prefix_len, dev, &path->IFH)) { 
         if (strcmp(nhip, " ") == 0 || strlen(nhip) == 0) {
-            inet_pton(AF_INET, "0.0.0.0", &path->nexthop_ip);
-        } else {
-            inet_pton(AF_INET, nhip, &path->nexthop_ip);
-        }
+		inet_pton(AF_INET, "0.0.0.0", &path->nexthop_ip);
+       	} else {
+		inet_pton(AF_INET, nhip, &path->nexthop_ip);
+	}
+    } else {
+       	printf("No route to destination\n");
+       	return NULL;
+    }
+
     /*} else { // Explicit
         if (path->num_hops > 0) {
             path->nexthop_ip = path->explicit_hops[0]; // First hop for ingress
