@@ -68,9 +68,11 @@ void* receive_thread(void* arg) {
 			}
 
 			pthread_mutex_lock(&path_list_mutex);
-	                path_head = insert_session(path_head, tunnel_id, sender_ip, receiver_ip, reached);
-			if(path_head == NULL)
-				return;
+			if(search_session(path_head, tunnel_id) == NULL) {
+	                	path_head = insert_session(path_head, tunnel_id, sender_ip, receiver_ip, reached);
+				if(path_head == NULL)
+					return;
+			}
                 	pthread_mutex_unlock(&path_list_mutex);
 		}
 		temp = NULL;
@@ -95,9 +97,11 @@ void* receive_thread(void* arg) {
                         }
 
                         pthread_mutex_lock(&resv_list_mutex);
-                        resv_head = insert_session(resv_head, tunnel_id, sender_ip, receiver_ip, reached);
-			if(resv_head == NULL)
-                                return;
+			if(search_session(resv_head, tunnel_id) == NULL) {
+                        	resv_head = insert_session(resv_head, tunnel_id, sender_ip, receiver_ip, reached);
+				if(resv_head == NULL)
+                                	return;	
+			}
                         pthread_mutex_unlock(&resv_list_mutex);
                 }
 		temp = NULL;

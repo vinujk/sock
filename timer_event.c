@@ -159,7 +159,7 @@ void start_timer(timer_t timerid) {
     }
 }
 
-/*int is_timer_active(timer_t *timer) {
+int is_timer_active(timer_t *timer) {
     struct itimerspec ts;
     if(*timer == 0)
         return 0;
@@ -170,22 +170,22 @@ void start_timer(timer_t timerid) {
         *timer = 0;
         return 0;
     }
-}*/
+}
 
 void path_event_handler() {
-/*    if(is_timer_active(&path_timer)) {
+    if(is_timer_active(&path_timer)) {
         return;
     }
-*/
+
     path_timer = create_timer(path_timer_handler);
     start_timer(path_timer);
 }
 
 void resv_event_handler() {
-/*    if(is_timer_active(&resv_timer)) {
+    if(is_timer_active(&resv_timer)) {
         return;
     }
-*/
+
     resv_timer = create_timer(resv_timer_handler);
     start_timer(resv_timer);
 }

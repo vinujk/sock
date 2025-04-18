@@ -34,7 +34,7 @@ struct session* search_session(struct session* sess, uint16_t tunnel_id) {
 	return NULL;	
 }
 
-struct session* insert_session(struct session* sess, uint8_t t_id, char sender[], char receiver[], uint8_t dest) {
+struct session* insert_session(struct session* sess, uint16_t t_id, char sender[], char receiver[], uint8_t dest) {
     printf("insert session\n");
     if(sess == NULL) {
         struct session *temp = (struct session*)malloc(sizeof(struct session));
@@ -264,12 +264,20 @@ db_node* search_node(db_node *node, uint16_t data, int (*cmp)(uint16_t, const vo
 void update_tables(db_node *path_node, db_node *resv_node, uint16_t tunnel_id) {
 
 	char d_ip[16], n_ip[16], command[200];
+	resv_msg* p;
+	path_msg* pa;
 
 	db_node* temp1 = search_node(resv_node, tunnel_id, compare_resv_del);
-	resv_msg* p = (resv_msg*)temp1->data;
+	if( temp1 != NULL)
+		p = (resv_msg*)temp1->data;
+	else 	
+		return;
 
 	db_node* temp2 = search_node(path_node, tunnel_id, compare_resv_del);
-        path_msg* pa = (path_msg*)temp2->data;
+	if(temp1 != NULL)
+        	pa = (path_msg*)temp2->data;
+	else 
+		return;
 
         //update path table
 	if(get_nexthop(inet_ntoa(pa->dest_ip), nhip, &pa->prefix_len, dev, &pa->IFH)) {
