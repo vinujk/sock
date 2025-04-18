@@ -73,14 +73,14 @@ void path_timer_handler(union sigval sv) {
         temp = temp->next;
     }
     pthread_mutex_unlock(&resv_list_mutex);
-    if(resv_head == NULL) {
+    /*if(resv_head == NULL) {
         if(sv.sival_ptr == NULL)
             return;
 
         timer_t *id = (timer_t*)sv.sival_ptr;
         delete_timer(id);
         sv.sival_ptr = NULL;
-    }
+    }*/
 }
 
 //Timer event handler for seding RESV message
@@ -115,14 +115,14 @@ void resv_timer_handler(union sigval sv) {
         temp = temp->next;
     }
     pthread_mutex_unlock(&path_list_mutex);
-    if(path_head == NULL) {
+    /*if(path_head == NULL) {
         if(sv.sival_ptr == NULL)
             return;
 
         timer_t *id = (timer_t*)sv.sival_ptr;	
         delete_timer(id);
         sv.sival_ptr = NULL;
-    }
+    }*/
 }
 
 // Function to create a timer that triggers every 30 seconds
@@ -157,7 +157,7 @@ void start_timer(timer_t timerid) {
     }
 }
 
-int is_timer_active(timer_t *timer) {
+/*int is_timer_active(timer_t *timer) {
     struct itimerspec ts;
     if(*timer == 0)
         return 0;
@@ -168,7 +168,7 @@ int is_timer_active(timer_t *timer) {
         *timer = 0;
         return 0;
     }
-}
+}*/
 
 void path_event_handler() {
     if(is_timer_active(&path_timer)) {
