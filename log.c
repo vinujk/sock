@@ -11,9 +11,9 @@ void log_message(const char* format, ...) {
     if (log_file) {
         va_list args;
         va_start(args, format);
-        fprintf(log_file, "[%ld] ", time(NULL));
-        vfprintf(log_file, format, args);  // Use vfprintf for variadic args
-        fprintf(log_file, "\n");
+        flog_message(log_file, "[%ld] ", time(NULL));
+        vflog_message(log_file, format, args);  // Use vflog_message for variadic args
+        flog_message(log_file, "\n");
         fflush(log_file);  // Ensure immediate write
         va_end(args);
     }

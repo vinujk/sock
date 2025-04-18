@@ -35,11 +35,12 @@ struct session* search_session(struct session* sess, uint16_t tunnel_id) {
 }
 
 struct session* insert_session(struct session* sess, uint16_t t_id, char sender[], char receiver[], uint8_t dest) {
-    printf("insert session\n");
+    now = time(NULL):
+    log_message("insert session\n");
     if(sess == NULL) {
         struct session *temp = (struct session*)malloc(sizeof(struct session));
         if(temp < 0){
-            printf("cannot allocate dynamic memory]n");
+            log_message("cannot allocate dynamic memory]n");
 	    return NULL;
 	}
 
@@ -59,7 +60,7 @@ struct session* insert_session(struct session* sess, uint16_t t_id, char sender[
 
         struct session *temp = (struct session*)malloc(sizeof(struct session));
         if(sess < 0)
-            printf("cannot allocate dynamic memory\n");
+            log_message("cannot allocate dynamic memory\n");
 
         temp->last_path_time = now;
         strcpy(temp->sender, sender);
@@ -77,7 +78,7 @@ struct session* delete_session(struct session* head, struct session* sess) {
 
     struct session *temp = NULL;
 
-    printf("delete session\n");
+    log_message("delete session\n");
        if(head == sess) { 
             temp = head;
             head = head->next;
@@ -140,7 +141,7 @@ db_node* left_rotate(db_node *x) {
 db_node* create_node(void *data) {
     db_node *node = (db_node*)malloc(sizeof(db_node));
     if (!node) {
-        printf("Memory allocation failed!\n");
+        log_message("Memory allocation failed!\n");
         return NULL;
     }
     node->data = data;
@@ -287,7 +288,7 @@ void update_tables(db_node *path_node, db_node *resv_node, uint16_t tunnel_id) {
        		     inet_pton(AF_INET, nhip, &pa->nexthop_ip);
 	        }
 	} else {
-		printf("No route to destiantion %s\n", inet_ntoa(pa->dest_ip));
+		log_message("No route to destiantion %s\n", inet_ntoa(pa->dest_ip));
 	}
 
 	inet_ntop(AF_INET, &p->dest_ip, d_ip, 16);
@@ -296,20 +297,20 @@ void update_tables(db_node *path_node, db_node *resv_node, uint16_t tunnel_id) {
 	//update LFIB table
 	if(p->in_label == -1 && (p->out_label >= BASE_LABEL)) {
 		//push label delete
-		snprintf(command, sizeof(command), "ip route del %s/%d encap mpls %d via %s dev %s",
+		snlog_message(command, sizeof(command), "ip route del %s/%d encap mpls %d via %s dev %s",
                     d_ip, p->prefix_len, (p->out_label), n_ip, p->dev);
-                printf(" ========== 1 %s \n", command);
+                log_message(" ========== 1 %s \n", command);
 	} else if(p->in_label >= BASE_LABEL && p->out_label >= BASE_LABEL) {
 		//swap label delete
-		snprintf(command, sizeof(command), "ip -M route del %d as %d via inet %s",
+		snlog_message(command, sizeof(command), "ip -M route del %d as %d via inet %s",
                         (p->in_label), (p->out_label), n_ip);
-                printf(" ========== 3 %s - ", command);
+                log_message(" ========== 3 %s - ", command);
                 system(command);
 	} else if(p->in_label > BASE_LABEL && (p->out_label == IMPLICIT_NULL || p->out_label == EXPLICIT_NULL)) {
 		//explicit label =  3 delete
-		snprintf(command, sizeof(command), "ip -M route add %d via inet %s dev %s",
+		snlog_message(command, sizeof(command), "ip -M route add %d via inet %s dev %s",
                         (p->in_label), n_ip, pa->dev);
-                printf(" ========== 2 %s - ", command);
+                log_message(" ========== 2 %s - ", command);
                 system(command);
 	} else {
 		//not a valid label
@@ -347,7 +348,7 @@ void display_tree(db_node *node, uint8_t msg, char *buffer, size_t buffer_size) 
         inet_ntop(AF_INET, &p->src_ip, source_ip, 16);
         inet_ntop(AF_INET, &p->dest_ip, destination_ip, 16);
         inet_ntop(AF_INET, &p->nexthop_ip, next_hop_ip, 16);
-        snprintf(temp, sizeof(temp), 
+        snlog_message(temp, sizeof(temp), 
                  "Tunnel ID: %d, Src: %s, Dst: %s, NextHop: %s, Name: %s\n",
                  p->tunnel_id, source_ip, destination_ip,
                  next_hop_ip, p->name);
@@ -356,7 +357,7 @@ void display_tree(db_node *node, uint8_t msg, char *buffer, size_t buffer_size) 
         inet_ntop(AF_INET, &r->src_ip, source_ip, 16);
         inet_ntop(AF_INET, &r->dest_ip, destination_ip, 16);
         inet_ntop(AF_INET, &r->nexthop_ip, next_hop_ip, 16);
-        snprintf(temp, sizeof(temp),
+        snlog_message(temp, sizeof(temp),
                 "Tunnel ID: %u, Src: %s, Dest: %s, Next Hop: %s, In_label: %d, Out_label: %d\n",
                 r->tunnel_id, source_ip, destination_ip, next_hop_ip, ntohl(r->in_label),
                 ntohl(r->out_label));
@@ -378,7 +379,7 @@ void display_tree_debug(db_node *node, uint8_t msg) {
         inet_ntop(AF_INET, &p->src_ip, source_ip, 16);
         inet_ntop(AF_INET, &p->dest_ip, destination_ip, 16);
         inet_ntop(AF_INET, &p->nexthop_ip, next_hop_ip, 16);
-        printf("Tunnel ID: %u, Src: %s, Dest: %s, Next Hop: %s\n",
+        log_message("Tunnel ID: %u, Src: %s, Dest: %s, Next Hop: %s\n",
                 p->tunnel_id,
                 source_ip,
                 destination_ip,
@@ -388,7 +389,7 @@ void display_tree_debug(db_node *node, uint8_t msg) {
         inet_ntop(AF_INET, &r->src_ip, source_ip, 16);
         inet_ntop(AF_INET, &r->dest_ip, destination_ip, 16);
         inet_ntop(AF_INET, &r->nexthop_ip, next_hop_ip, 16);
-        printf("Tunnel ID: %u, Src: %s, Dest: %s, Next Hop: %s, prefix_len: %d, In_label: %d, Out_label: %d\n",
+        log_message("Tunnel ID: %u, Src: %s, Dest: %s, Next Hop: %s, prefix_len: %d, In_label: %d, Out_label: %d\n",
                 r->tunnel_id,
                 source_ip,
                 destination_ip,
@@ -440,7 +441,7 @@ db_node* path_tree_insert(db_node* path_tree, char buffer[], struct in_addr p_nh
             p->prefix_len = prefix_len;
         }
     } else {
-        printf("No route to destination\n");
+        log_message("No route to destination\n");
         return NULL;
     }
 
@@ -475,7 +476,7 @@ db_node* resv_tree_insert(db_node* resv_tree, char buffer[], struct in_addr p_nh
         strcpy(p->dev, dev);
         p->IFH = ifh;
         p->prefix_len = prefix_len;
-	printf("prefix_len = %d\n", prefix_len);
+	log_message("prefix_len = %d\n", prefix_len);
 */        if(!path_dst_reach) {
                 p->out_label = ntohl(label_obj->label);
         }
@@ -490,7 +491,7 @@ db_node* resv_tree_insert(db_node* resv_tree, char buffer[], struct in_addr p_nh
             //inet_pton(AF_INET, nhip, &p->nexthop_ip);
         }
     /*} else {
-        printf("No route to Source\n");
+        log_message("No route to Source\n");
         return NULL;
     }*/
 

@@ -58,12 +58,12 @@ void* receive_thread(void* arg) {
                 resv_event_handler();
 
                 // get ip from the received path packet
-                printf(" in path msg type\n");
+                log_message(" in path msg type\n");
                 get_ip(buffer, sender_ip, receiver_ip, &tunnel_id);
                 temp = search_session(path_head, tunnel_id);
 		if(temp == NULL) {
 			if((reached = dst_reached(receiver_ip)) == -1) {
-				printf(" No route to destiantion %s\n",receiver_ip);
+				log_message(" No route to destiantion %s\n",receiver_ip);
 				return;
 			}
 
@@ -87,12 +87,12 @@ void* receive_thread(void* arg) {
                 path_event_handler();
 
                 //get ip from the received resv msg
-                printf(" in resv msg type\n");
+                log_message(" in resv msg type\n");
 		get_ip(buffer, sender_ip, receiver_ip, &tunnel_id);
                 temp = search_session(resv_head, tunnel_id);
                 if(temp == NULL) {
 			if((reached = dst_reached(sender_ip)) == -1) {
-                                printf(" No route to destiantion %s\n",sender_ip);
+                                log_message(" No route to destiantion %s\n",sender_ip);
                                 return;
                         }
 
@@ -113,7 +113,7 @@ void* receive_thread(void* arg) {
             default: {
 
                 char msg[64];
-                snprintf(msg, sizeof(msg), "Unknown RSVP message type: %d", rsvp->msg_type);
+                snlog_message(msg, sizeof(msg), "Unknown RSVP message type: %d", rsvp->msg_type);
                 log_message(msg);
 	    }
         }
@@ -174,7 +174,7 @@ void* ipc_server_thread(void* arg) {
             } else if (strncmp(buffer, "delete ", 7) == 0) {
                 rsvp_delete_config(buffer + 7, response, sizeof(response));
             } else {
-                snprintf(response, sizeof(response), "Unknown command\n");
+                snlog_message(response, sizeof(response), "Unknown command\n");
             }
             
             send(client_sock, response, strlen(response), 0);

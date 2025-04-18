@@ -33,7 +33,7 @@ void delete_timer(timer_t *timer_id) {
         exit(EXIT_FAILURE);
     }
     timer_id = 0;
-    printf(" timer delete sucessfully %p \n", timer_id);
+    log_message(" timer delete sucessfully %p \n", timer_id);
 }
 
 //Timer event handler for seding PATH message
@@ -46,7 +46,7 @@ void path_timer_handler(union sigval sv) {
     struct session* temp = NULL;
     temp = resv_head;
 
-    printf("++++++++path timer handler \n");
+    log_message("++++++++path timer handler \n");
     pthread_mutex_lock(&resv_list_mutex);
     while(temp != NULL) {
 
@@ -56,7 +56,7 @@ void path_timer_handler(union sigval sv) {
 
         if((now - temp->last_path_time) > TIMEOUT) {
             if(!temp->dest) {
-                printf("RSVP path session expired: %s\t-->%s\n",temp->sender, temp->receiver);
+                log_message("RSVP path session expired: %s\t-->%s\n",temp->sender, temp->receiver);
                 resv_head = delete_session(resv_head, temp);
             }
 	    //<path tear message>
@@ -65,11 +65,11 @@ void path_timer_handler(union sigval sv) {
 	    if(resv_tree != NULL)
             	display_tree_debug(resv_tree, 0);
         } else if((now - temp->last_path_time) < INTERVAL) {
-            printf(" less than 30 sec\n");
+            log_message(" less than 30 sec\n");
             temp = temp->next;
             continue;
         } else {
-            printf("not received resv msg\n");
+            log_message("not received resv msg\n");
         }
         temp = temp->next;
     }
@@ -93,25 +93,25 @@ void resv_timer_handler(union sigval sv) {
     struct session* temp = NULL;
     temp = path_head;
 
-    printf("timer handler \n");
+    log_message("timer handler \n");
     pthread_mutex_lock(&path_list_mutex);
     while(temp != NULL) {
         if((now - temp->last_path_time) > TIMEOUT) {
-            printf("RSVP resv session expired: %s\t-->%s\n",temp->sender, temp->receiver);
+            log_message("RSVP resv session expired: %s\t-->%s\n",temp->sender, temp->receiver);
             path_tree = delete_node(path_tree, temp->tunnel_id, compare_path_del, 1);
             path_head = delete_session(path_head, temp);
 	    if(path_tree != NULL)
 	            display_tree_debug(path_tree, 1);
         } else if((now - temp->last_path_time) < INTERVAL) {
-            printf(" less than 30 sec\n");
+            log_message(" less than 30 sec\n");
             temp = temp->next;
             continue;
         } else {
             if(temp->dest) {
-                printf("--------sending resv message\n");
+                log_message("--------sending resv message\n");
                 send_resv_message(sock, temp->tunnel_id);
             } else {
-                printf("not received path msg\n");
+                log_message("not received path msg\n");
             }
         }
         temp = temp->next;
