@@ -24,7 +24,7 @@ extern int sock;
 void get_path_tree_info(char* buffer, size_t buffer_size) {
     buffer[0] = '\0'; // Clear buffer
     if (path_tree == NULL) {
-        snlog_message(buffer, buffer_size, "No PATH entries\n");
+        snprintf(buffer, buffer_size, "No PATH entries\n");
         return;
     }
     display_tree(path_tree, 1, buffer, buffer_size);
@@ -37,7 +37,7 @@ void get_path_tree_info(char* buffer, size_t buffer_size) {
 void get_resv_tree_info(char* buffer, size_t buffer_size) {
     buffer[0] = '\0';
     if (resv_tree == NULL) {
-        snlog_message(buffer, buffer_size, "No RESV entries\n");
+        snprintf(buffer, buffer_size, "No RESV entries\n");
         return;
     }
     display_tree(resv_tree, 0, buffer, buffer_size);
@@ -46,7 +46,7 @@ void get_resv_tree_info(char* buffer, size_t buffer_size) {
 // Config API functions
 int rsvp_add_config(const char* args, char* response, size_t response_size) {
     if (strcmp(args, "-h") == 0 || strcmp(args, "--help") == 0) {
-        snlog_message(response, response_size,
+        snprintf(response, response_size,
                  "Usage: rsvp add config -t <id> -s <srcip> -d <dstip> -n <name> -p <policy> [-i <interval>] [-S <setup>] [-H <hold>] [-f <flags>]\n"
                  "  -t: Tunnel ID (required)\n"
                  "  -s: Source IP (required)\n"
@@ -64,7 +64,7 @@ int rsvp_add_config(const char* args, char* response, size_t response_size) {
     path_msg *path = create_path(args, response, response_size);
     if (!path) {
         log_message("Failed to create path");
-        snlog_message(response, response_size, "Error: Failed to create path\n");
+        snprintf(response, response_size, "Error: Failed to create path\n");
         return -1; // Error message already set by create_path
     }
     log_message("Processing tunnel %d in rsvp_add_config", path->tunnel_id);
@@ -87,7 +87,7 @@ int rsvp_add_config(const char* args, char* response, size_t response_size) {
     log_message("dest ip/receiver ip %s", receiver_ip);
     log_message("insert_session completed for tunnel %d", path->tunnel_id);
 
-    snlog_message(response, response_size, "Added tunnel %d: %s -> %s (%s)\n", 
+    snprintf(response, response_size, "Added tunnel %d: %s -> %s (%s)\n", 
              path->tunnel_id, sender_ip, receiver_ip, path->name);
     log_message("Tunnel %d added: %s", path->tunnel_id, response);
     // Send initial PATH message
@@ -106,7 +106,7 @@ int rsvp_delete_config(const char* args, char* response, size_t response_size) {
 
     // Check for help
     if (strcmp(args, "-h") == 0 || strcmp(args, "--help") == 0) {
-        snlog_message(response, response_size,
+        snprintf(response, response_size,
                  "Usage: rsvp delete config -t <id>\n"
                  "  -t: Tunnel ID to delete (required)\n");
         return 0;
@@ -127,7 +127,7 @@ int rsvp_delete_config(const char* args, char* response, size_t response_size) {
     }
 
     if (tunnel_id < 0) {
-        snlog_message(response, response_size, "Error: Missing required argument (-t)\n");
+        snprintf(response, response_size, "Error: Missing required argument (-t)\n");
         return -1;
     }
 
@@ -135,12 +135,12 @@ int rsvp_delete_config(const char* args, char* response, size_t response_size) {
     db_node* found = search_node(path_tree, tunnel_id, compare_path_del);
     log_message("after search node in delete config");
     if (found == NULL) {
-        snlog_message(response, response_size, "Error: Tunnel %d not found\n", tunnel_id);
+        snprintf(response, response_size, "Error: Tunnel %d not found\n", tunnel_id);
         return -1;
     }
 
     path_tree = delete_node(path_tree, tunnel_id, compare_path_del, 1);
-    snlog_message(response, response_size, "Deleted tunnel %d\n", tunnel_id);
+    snprintf(response, response_size, "Deleted tunnel %d\n", tunnel_id);
     return 0;
 }
 	
@@ -149,7 +149,7 @@ path_msg* create_path(const char *args, char *response, size_t response_size) {
     path_msg *path = malloc(sizeof(path_msg));
     char dev[16];
     if (!path) {
-        snlog_message(response, response_size, "Error: Memory allocation failed\n");
+        log_message(response, response_size, "Error: Memory allocation failed\n");
         return NULL;
     }
 
@@ -204,7 +204,7 @@ path_msg* create_path(const char *args, char *response, size_t response_size) {
                     }
                     if (token) continue; // Skip non-IP token
                 } else {
-                    snlog_message(response, response_size, "Error: Invalid path type '%s'. Use 'dynamic' or 'explicit'\n", token);
+                    snprintf(response, response_size, "Error: Invalid path type '%s'. Use 'dynamic' or 'explicit'\n", token);
                     free(path);
                     return NULL;
                 }*/
@@ -227,17 +227,17 @@ path_msg* create_path(const char *args, char *response, size_t response_size) {
 
     // Validate required fields
     if (path->tunnel_id < 0 || path->src_ip.s_addr == 0 || path->dest_ip.s_addr == 0 || path->name[0] == '\0') {
-        snlog_message(response, response_size, "Error: Missing required arguments (-t, -s, -d, -n, -p)\n");
+        snprintf(response, response_size, "Error: Missing required arguments (-t, -s, -d, -n, -p)\n");
         free(path);
         return NULL;
     }
     /*if (path->path_type == 1 && path->num_hops == 0) {
-        snlog_message(response, response_size, "Error: Explicit path requires at least one hop\n");
+        snprintf(response, response_size, "Error: Explicit path requires at least one hop\n");
         free(path);
         return NULL;
     }*/
     if (path->setup_priority > 7 || path->hold_priority > 7) {
-        snlog_message(response, response_size, "Error: Setup and Hold priorities must be between 0 and 7\n");
+        snprintf(response, response_size, "Error: Setup and Hold priorities must be between 0 and 7\n");
         free(path);
         return NULL;
     }
@@ -314,16 +314,16 @@ int rsvpsh_main() {
 
         if (in_config_mode) {
             if (strncmp(input, "rsvp add config ", 16) == 0) {
-                snlog_message(input, sizeof(input), "add %s", input + 16);
+                snprintf(input, sizeof(input), "add %s", input + 16);
             } else if (strncmp(input, "rsvp delete config ", 19) == 0) {
-                snlog_message(input, sizeof(input), "delete %s", input + 19);
+                snprintf(input, sizeof(input), "delete %s", input + 19);
             } else {
                 log_message("Config commands: rsvp add config ..., rsvp delete config ..., exit, --help for manual\n");
                 close(sock);
                 continue;
             }
         } else if (strncmp(input, "rsvp show ", 10) == 0) {
-            snlog_message(input, sizeof(input), "show %s", input + 10);
+            snprintf(input, sizeof(input), "show %s", input + 10);
         } else {
             log_message("Commands: config, rsvp show [path | resv], exit\n");
             close(sock);

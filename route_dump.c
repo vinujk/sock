@@ -10,6 +10,7 @@
 #include <sys/socket.h>
 #include <linux/rtnetlink.h>
 
+#include "log.h"
 
 static char dest_ip[16], nh[16], DEv[16];
 static uint32_t ifh;
@@ -259,7 +260,7 @@ int get_route_dump_response(int sock)
 
     while (NLMSG_OK(h, msglen)) {
         if (h->nlmsg_flags & NLM_F_DUMP_INTR) {
-            flog_message(stderr, "Dump was interrupted\n");
+            fprintf(stderr, "Dump was interrupted\n");
             free(buf);
             return -1;
         }

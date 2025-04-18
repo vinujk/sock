@@ -8,6 +8,8 @@
 #include<pthread.h>
 #include<unistd.h>
 
+#include "log.h"
+
 #define EXPLICIT_NULL 0 
 #define IMPLICIT_NULL 3 
 #define BASE_LABEL 16
@@ -85,7 +87,7 @@ void display_tree_debug(db_node *, uint8_t);
 void display_tree(db_node * , uint8_t , char * , size_t);
 
 struct session* search_session(struct session*, uint16_t);
-struct session* insert_session(struct session*, uint8_t, char[], char[], uint8_t);
+struct session* insert_session(struct session*, uint16_t, char[], char[], uint8_t);
 struct session* delete_session(struct session*, struct session*);
 db_node* path_tree_insert(db_node*, char[], struct in_addr);
 db_node* resv_tree_insert(db_node*, char[], struct in_addr, uint8_t);

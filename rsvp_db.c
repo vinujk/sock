@@ -35,7 +35,7 @@ struct session* search_session(struct session* sess, uint16_t tunnel_id) {
 }
 
 struct session* insert_session(struct session* sess, uint16_t t_id, char sender[], char receiver[], uint8_t dest) {
-    now = time(NULL):
+    now = time(NULL);
     log_message("insert session\n");
     if(sess == NULL) {
         struct session *temp = (struct session*)malloc(sizeof(struct session));
@@ -297,18 +297,18 @@ void update_tables(db_node *path_node, db_node *resv_node, uint16_t tunnel_id) {
 	//update LFIB table
 	if(p->in_label == -1 && (p->out_label >= BASE_LABEL)) {
 		//push label delete
-		snlog_message(command, sizeof(command), "ip route del %s/%d encap mpls %d via %s dev %s",
+		snprintf(command, sizeof(command), "ip route del %s/%d encap mpls %d via %s dev %s",
                     d_ip, p->prefix_len, (p->out_label), n_ip, p->dev);
                 log_message(" ========== 1 %s \n", command);
 	} else if(p->in_label >= BASE_LABEL && p->out_label >= BASE_LABEL) {
 		//swap label delete
-		snlog_message(command, sizeof(command), "ip -M route del %d as %d via inet %s",
+		snprintf(command, sizeof(command), "ip -M route del %d as %d via inet %s",
                         (p->in_label), (p->out_label), n_ip);
                 log_message(" ========== 3 %s - ", command);
                 system(command);
 	} else if(p->in_label > BASE_LABEL && (p->out_label == IMPLICIT_NULL || p->out_label == EXPLICIT_NULL)) {
 		//explicit label =  3 delete
-		snlog_message(command, sizeof(command), "ip -M route add %d via inet %s dev %s",
+		snprintf(command, sizeof(command), "ip -M route add %d via inet %s dev %s",
                         (p->in_label), n_ip, pa->dev);
                 log_message(" ========== 2 %s - ", command);
                 system(command);
@@ -348,7 +348,7 @@ void display_tree(db_node *node, uint8_t msg, char *buffer, size_t buffer_size) 
         inet_ntop(AF_INET, &p->src_ip, source_ip, 16);
         inet_ntop(AF_INET, &p->dest_ip, destination_ip, 16);
         inet_ntop(AF_INET, &p->nexthop_ip, next_hop_ip, 16);
-        snlog_message(temp, sizeof(temp), 
+        snprintf(temp, sizeof(temp), 
                  "Tunnel ID: %d, Src: %s, Dst: %s, NextHop: %s, Name: %s\n",
                  p->tunnel_id, source_ip, destination_ip,
                  next_hop_ip, p->name);
@@ -357,7 +357,7 @@ void display_tree(db_node *node, uint8_t msg, char *buffer, size_t buffer_size) 
         inet_ntop(AF_INET, &r->src_ip, source_ip, 16);
         inet_ntop(AF_INET, &r->dest_ip, destination_ip, 16);
         inet_ntop(AF_INET, &r->nexthop_ip, next_hop_ip, 16);
-        snlog_message(temp, sizeof(temp),
+        snprintf(temp, sizeof(temp),
                 "Tunnel ID: %u, Src: %s, Dest: %s, Next Hop: %s, In_label: %d, Out_label: %d\n",
                 r->tunnel_id, source_ip, destination_ip, next_hop_ip, ntohl(r->in_label),
                 ntohl(r->out_label));

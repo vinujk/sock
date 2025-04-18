@@ -113,7 +113,7 @@ void* receive_thread(void* arg) {
             default: {
 
                 char msg[64];
-                snlog_message(msg, sizeof(msg), "Unknown RSVP message type: %d", rsvp->msg_type);
+                snprintf(msg, sizeof(msg), "Unknown RSVP message type: %d", rsvp->msg_type);
                 log_message(msg);
 	    }
         }
@@ -174,7 +174,7 @@ void* ipc_server_thread(void* arg) {
             } else if (strncmp(buffer, "delete ", 7) == 0) {
                 rsvp_delete_config(buffer + 7, response, sizeof(response));
             } else {
-                snlog_message(response, sizeof(response), "Unknown command\n");
+                snprintf(response, sizeof(response), "Unknown command\n");
             }
             
             send(client_sock, response, strlen(response), 0);

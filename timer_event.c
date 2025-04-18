@@ -3,7 +3,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
-
 #include "timer-event.h"
 #include "rsvp_msg.h"
 #include "rsvp_db.h"

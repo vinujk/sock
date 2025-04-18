@@ -320,19 +320,19 @@ void receive_resv_message(int sock, char buffer[], struct sockaddr_in sender_add
         if(strcmp(inet_ntoa(p->nexthop_ip),"0.0.0.0") == 0) {
             log_message("****reached the source, end oF rsvp tunnel***\n");
 
-            snlog_message(command, sizeof(command), "ip route add %s/%d encap mpls %d via %s dev %s",
+            snprintf(command, sizeof(command), "ip route add %s/%d encap mpls %d via %s dev %s",
                     d_ip, p->prefix_len, (p->out_label), n_ip, pa->dev);
 
             log_message(" ========== 1 %s \n", command);
             system(command);
         } else {
             if(p->out_label == 3) {
-                snlog_message(command, sizeof(command), "ip -M route add %d via inet %s dev %s",
+                snprintf(command, sizeof(command), "ip -M route add %d via inet %s dev %s",
                         (p->in_label), n_ip, pa->dev);
                 log_message(" ========== 2 %s - ", command);
                 system(command);
             } else {
-                snlog_message(command, sizeof(command), "ip -M route add %d as %d via inet %s",
+                snprintf(command, sizeof(command), "ip -M route add %d as %d via inet %s",
                         (p->in_label), (p->out_label), n_ip);
                 log_message(" ========== 3 %s - ", command);
                 system(command);
