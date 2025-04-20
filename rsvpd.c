@@ -60,20 +60,22 @@ void* receive_thread(void* arg) {
                 // get ip from the received path packet
                 log_message(" in path msg type\n");
                 get_ip(buffer, sender_ip, receiver_ip, &tunnel_id);
+		if((reached = dst_reached(receiver_ip)) == -1) {
+                	log_message(" No route to destiantion %s\n",receiver_ip);
+                        return;
+                }
+
+		pthread_mutex_lock(&path_list_mutex);
                 temp = search_session(path_head, tunnel_id);
+                pthread_mutex_unlock(&path_list_mutex);
 		if(temp == NULL) {
-			if((reached = dst_reached(receiver_ip)) == -1) {
-				log_message(" No route to destiantion %s\n",receiver_ip);
+			pthread_mutex_lock(&path_list_mutex);
+	               	path_head = insert_session(path_head, tunnel_id, sender_ip, receiver_ip, reached);
+ 			pthread_mutex_unlock(&path_list_mutex);
+			if(path_head == NULL) {
+				log_message("insert for tunnel %d failed", tunnel_id);
 				return;
 			}
-
-			pthread_mutex_lock(&path_list_mutex);
-			if(search_session(path_head, tunnel_id) == NULL) {
-	                	path_head = insert_session(path_head, tunnel_id, sender_ip, receiver_ip, reached);
-				if(path_head == NULL)
-					return;
-			}
-                	pthread_mutex_unlock(&path_list_mutex);
 		}
 		temp = NULL;
                 
@@ -88,24 +90,24 @@ void* receive_thread(void* arg) {
 
                 //get ip from the received resv msg
                 log_message(" in resv msg type\n");
-		get_ip(buffer, sender_ip, receiver_ip, &tunnel_id);
+		/*get_ip(buffer, sender_ip, receiver_ip, &tunnel_id);
+		if((reached = dst_reached(sender_ip)) == -1) {
+	                log_message(" No route to destiantion %s\n",sender_ip);
+                        return;
+                }
+                
+		pthread_mutex_lock(&resv_list_mutex);
                 temp = search_session(resv_head, tunnel_id);
                 if(temp == NULL) {
-			if((reached = dst_reached(sender_ip)) == -1) {
-                                log_message(" No route to destiantion %s\n",sender_ip);
-                                return;
-                        }
-
-                        pthread_mutex_lock(&resv_list_mutex);
-			if(search_session(resv_head, tunnel_id) == NULL) {
-                        	resv_head = insert_session(resv_head, tunnel_id, sender_ip, receiver_ip, reached);
-				if(resv_head == NULL)
-                                	return;	
+                        resv_head = insert_session(resv_head, tunnel_id, sender_ip, receiver_ip, reached);
+			if(resv_head == NULL) {
+				log_message("insert for tunnel %d failed", tunnel_id);
+                               	return;	
 			}
-                        pthread_mutex_unlock(&resv_list_mutex);
                 }
 		temp = NULL;
-                
+ 	        pthread_mutex_unlock(&resv_list_mutex);
+               	*/ 
                 receive_resv_message(sock,buffer,sender_addr);
                 
  		break;

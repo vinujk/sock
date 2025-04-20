@@ -45,6 +45,8 @@ void get_resv_tree_info(char* buffer, size_t buffer_size) {
 
 // Config API functions
 int rsvp_add_config(const char* args, char* response, size_t response_size) {
+    struct session* temp = NULL;
+
     if (strcmp(args, "-h") == 0 || strcmp(args, "--help") == 0) {
         snprintf(response, response_size,
                  "Usage: rsvp add config -t <id> -s <srcip> -d <dstip> -n <name> -p <policy> [-i <interval>] [-S <setup>] [-H <hold>] [-f <flags>]\n"
@@ -72,7 +74,7 @@ int rsvp_add_config(const char* args, char* response, size_t response_size) {
     path_tree = insert_node(path_tree, path, compare_path_insert);
     if(path_tree == NULL)
 	return;
-    log_message("insert_node completed for tunnel %d", path->tunnel_id);
+    log_message("insert_node completed for tunnel %d path tree %d", path->tunnel_id,path_tree);
 
     // Add to path_head for timer refreshes
     char sender_ip[16], receiver_ip[16];
@@ -80,16 +82,22 @@ int rsvp_add_config(const char* args, char* response, size_t response_size) {
     inet_ntop(AF_INET, &path->dest_ip, receiver_ip, 16); 
     
     log_message("Calling insert_session for tunnel %d", path->tunnel_id);
-    resv_head = insert_session(resv_head, path->tunnel_id, sender_ip, receiver_ip, 1);
-    if(resv_head == NULL)
-	return;
-    
+    if(search_session(resv_head, path->tunnel_id) == NULL) {
+	temp = insert_session(resv_head, path->tunnel_id, sender_ip, receiver_ip, 1);
+	if(temp != NULL) {
+		resv_head = temp;
+	} else {
+		log_message("insert for tunnel %d failed", path->tunnel_id);
+       		return;
+	}
+    }
+
     log_message("dest ip/receiver ip %s", receiver_ip);
     log_message("insert_session completed for tunnel %d", path->tunnel_id);
-
     snprintf(response, response_size, "Added tunnel %d: %s -> %s (%s)\n", 
              path->tunnel_id, sender_ip, receiver_ip, path->name);
     log_message("Tunnel %d added: %s", path->tunnel_id, response);
+    
     // Send initial PATH message
     log_message("Calling send_path_message for tunnel %d", path->tunnel_id);
     send_path_message(sock, path->tunnel_id);
@@ -102,7 +110,8 @@ int rsvp_add_config(const char* args, char* response, size_t response_size) {
 int rsvp_delete_config(const char* args, char* response, size_t response_size) {
     char args_copy[256];
     strncpy(args_copy, args, sizeof(args_copy));
-    args_copy[sizeof(args_copy) - 1] = '\0';
+    args_copy[sizeof(args_copy) - 1] = '\0';	
+    struct session* temp1 = NULL;
 
     // Check for help
     if (strcmp(args, "-h") == 0 || strcmp(args, "--help") == 0) {
@@ -131,15 +140,26 @@ int rsvp_delete_config(const char* args, char* response, size_t response_size) {
         return -1;
     }
 
-    log_message("before search node in delete config");
-    db_node* found = search_node(path_tree, tunnel_id, compare_path_del);
-    log_message("after search node in delete config");
-    if (found == NULL) {
-        snprintf(response, response_size, "Error: Tunnel %d not found\n", tunnel_id);
-        return -1;
+    log_message("before delete node tunnel id %d path_tree = %d",tunnel_id,path_tree);
+    if(search_node(path_tree, tunnel_id, compare_path_del) != NULL) {
+    	db_node *temp = delete_node(path_tree, tunnel_id, compare_path_del, 1);
+    	if(temp == NULL) {
+		path_tree = temp;
+		log_message(" last nodE delete tunnel = %d ", tunnel_id);
+	} else {
+		path_tree = temp;
+		log_message(" tunne id = %d deleted", tunnel_id);
+	}
+    } else {
+	log_message(" tunnel id = %d not found in path tree", tunnel_id);
     }
 
-    path_tree = delete_node(path_tree, tunnel_id, compare_path_del, 1);
+    print_session(resv_head);
+    log_message("Calling delete_session for tunnel %d", tunnel_id);
+    if((temp1 = search_session(resv_head, tunnel_id)) != NULL) {
+	temp1->del = 1;
+    }
+
     snprintf(response, response_size, "Deleted tunnel %d\n", tunnel_id);
     return 0;
 }
@@ -149,7 +169,7 @@ path_msg* create_path(const char *args, char *response, size_t response_size) {
     path_msg *path = malloc(sizeof(path_msg));
     char dev[16];
     if (!path) {
-        log_message(response, response_size, "Error: Memory allocation failed\n");
+        snprintf(response, response_size, "Error: Memory allocation failed\n");
         return NULL;
     }
 
@@ -246,7 +266,7 @@ path_msg* create_path(const char *args, char *response, size_t response_size) {
     char nhip[16];
     //if (path->path_type == 0) { // Dynamic
     if(get_nexthop(inet_ntoa(path->dest_ip), nhip, &path->prefix_len, dev, &path->IFH)) { 
-        if (strcmp(nhip, " ") == 0 || strlen(nhip) == 0) {
+        if (strcmp(nhip, " ") == 0) {
 		inet_pton(AF_INET, "0.0.0.0", &path->nexthop_ip);
        	} else {
 		inet_pton(AF_INET, nhip, &path->nexthop_ip);
@@ -273,10 +293,10 @@ int rsvpsh_main() {
     char input[256], response[MAX_BUFFER];
     int in_config_mode = 0;
 
-    log_message("\033[1;32mRSVP Shell (OpenWrt)\033[0m\n");
+    printf("\033[1;32mRSVP Shell (OpenWrt)\033[0m\n");
 
     while (1) {
-        log_message("%s> ", in_config_mode ? "(config)# " : "rsvp");
+        printf("%s> ", in_config_mode ? "(config)# " : "rsvp");
         fflush(stdout);
         if (fgets(input, sizeof(input), stdin) == NULL) continue;
         input[strcspn(input, "\n")] = 0;
@@ -285,7 +305,7 @@ int rsvpsh_main() {
             if (in_config_mode) {
                 in_config_mode = 0;
             } else {
-                log_message("Exiting RSVP shell\n");
+                printf("Exiting RSVP shell\n");
                 break;
             }
             continue;
@@ -318,14 +338,14 @@ int rsvpsh_main() {
             } else if (strncmp(input, "rsvp delete config ", 19) == 0) {
                 snprintf(input, sizeof(input), "delete %s", input + 19);
             } else {
-                log_message("Config commands: rsvp add config ..., rsvp delete config ..., exit, --help for manual\n");
+                printf("Config commands: rsvp add config ..., rsvp delete config ..., exit, --help for manual\n");
                 close(sock);
                 continue;
             }
         } else if (strncmp(input, "rsvp show ", 10) == 0) {
             snprintf(input, sizeof(input), "show %s", input + 10);
         } else {
-            log_message("Commands: config, rsvp show [path | resv], exit\n");
+            printf("Commands: config, rsvp show [path | resv], exit\n");
             close(sock);
             continue;
         }
@@ -334,7 +354,7 @@ int rsvpsh_main() {
         int bytes = recv(sock, response, sizeof(response) - 1, 0);
         if (bytes > 0) {
             response[bytes] = '\0';
-            log_message("%s", response);
+            printf("%s", response);
         }
         close(sock);
     }

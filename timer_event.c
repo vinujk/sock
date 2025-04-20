@@ -46,23 +46,34 @@ void path_timer_handler(union sigval sv) {
     temp = resv_head;
 
     log_message("++++++++path timer handler \n");
-    pthread_mutex_lock(&resv_list_mutex);
     while(temp != NULL) {
-
-        if(temp->dest) {
+	
+	log_message(" temp->dest = %d tunnel_id = %d\n", temp->dest, temp->tunnel_id);
+        if(temp->dest && !temp->del) {
             send_path_message(sock, temp->tunnel_id);
         }
 
         if((now - temp->last_path_time) > TIMEOUT) {
-            if(!temp->dest) {
-                log_message("RSVP path session expired: %s\t-->%s\n",temp->sender, temp->receiver);
+            //if(!temp->dest) {
+            if(temp->del) {		
+                log_message("RSVP resv session expired: %s\t-->%s\n",temp->sender, temp->receiver);
+		pthread_mutex_lock(&resv_list_mutex);
                 resv_head = delete_session(resv_head, temp);
+		print_session(resv_head);
+		pthread_mutex_unlock(&resv_list_mutex);
             }
 	    //<path tear message>
-	    update_tables(path_tree, resv_tree, temp->tunnel_id);
-            resv_tree = delete_node(resv_tree, temp->tunnel_id, compare_resv_del, 0);
-	    if(resv_tree != NULL)
-            	display_tree_debug(resv_tree, 0);
+	    //update_tables(temp->tunnel_id);
+
+	    //delete node
+	    pthread_mutex_lock(&resv_tree_mutex);
+	    log_message("RSVP path session expired delete tunnel id %d from resv tree", temp->tunnel_id);
+	    display_tree_debug(resv_tree, 0);
+	    if(search_node(resv_tree, temp->tunnel_id, compare_resv_del) != NULL){
+            	delete_node(resv_tree, temp->tunnel_id, compare_resv_del, 0);
+		display_tree_debug(resv_tree, 0);
+	    }
+	    pthread_mutex_unlock(&resv_tree_mutex);
         } else if((now - temp->last_path_time) < INTERVAL) {
             log_message(" less than 30 sec\n");
             temp = temp->next;
@@ -72,7 +83,6 @@ void path_timer_handler(union sigval sv) {
         }
         temp = temp->next;
     }
-    pthread_mutex_unlock(&resv_list_mutex);
     /*if(resv_head == NULL) {
         if(sv.sival_ptr == NULL)
             return;
@@ -93,14 +103,23 @@ void resv_timer_handler(union sigval sv) {
     temp = path_head;
 
     log_message("timer handler \n");
-    pthread_mutex_lock(&path_list_mutex);
     while(temp != NULL) {
         if((now - temp->last_path_time) > TIMEOUT) {
             log_message("RSVP resv session expired: %s\t-->%s\n",temp->sender, temp->receiver);
-            path_tree = delete_node(path_tree, temp->tunnel_id, compare_path_del, 1);
+
+	    //delete node
+	    pthread_mutex_lock(&path_tree_mutex);
+	    if(search_node(path_tree, temp->tunnel_id, compare_path_del) != NULL) {
+            	delete_node(path_tree, temp->tunnel_id, compare_path_del, 1);
+                display_tree_debug(path_tree, 1);
+            }
+	    pthread_mutex_unlock(&path_tree_mutex);
+	
+	    //delete session
+            pthread_mutex_lock(&path_list_mutex);
             path_head = delete_session(path_head, temp);
-	    if(path_tree != NULL)
-	            display_tree_debug(path_tree, 1);
+	    print_session(path_head);
+	    pthread_mutex_unlock(&path_list_mutex);
         } else if((now - temp->last_path_time) < INTERVAL) {
             log_message(" less than 30 sec\n");
             temp = temp->next;
@@ -115,7 +134,6 @@ void resv_timer_handler(union sigval sv) {
         }
         temp = temp->next;
     }
-    pthread_mutex_unlock(&path_list_mutex);
     /*if(path_head == NULL) {
         if(sv.sival_ptr == NULL)
             return;
