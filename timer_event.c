@@ -70,7 +70,7 @@ void path_timer_handler(union sigval sv) {
 	    log_message("RSVP path session expired delete tunnel id %d from resv tree", temp->tunnel_id);
 	    display_tree_debug(resv_tree, 0);
 	    if(search_node(resv_tree, temp->tunnel_id, compare_resv_del) != NULL){
-            	delete_node(resv_tree, temp->tunnel_id, compare_resv_del, 0);
+            	resv_tree = delete_node(resv_tree, temp->tunnel_id, compare_resv_del, 0);
 		display_tree_debug(resv_tree, 0);
 	    }
 	    pthread_mutex_unlock(&resv_tree_mutex);
@@ -128,7 +128,7 @@ void resv_timer_handler(union sigval sv) {
                 display_tree_debug(resv_tree, 0);
             	if(search_node(resv_tree, temp->tunnel_id, compare_resv_del) != NULL){
 			display_tree_debug(resv_tree, 0);
-                	resv_tree=delete_node(resv_tree, temp->tunnel_id, compare_resv_del, 0);
+                	resv_tree = delete_node(resv_tree, temp->tunnel_id, compare_resv_del, 0);
                 	display_tree_debug(resv_tree, 0);
             	}
             	pthread_mutex_unlock(&resv_tree_mutex);
