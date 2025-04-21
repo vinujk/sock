@@ -55,7 +55,7 @@ void path_timer_handler(union sigval sv) {
 
         if((now - temp->last_path_time) > TIMEOUT) {
             //if(!temp->dest) {
-            if(temp->del) {		
+            if(!temp->dest || temp->del) {		
                 log_message("RSVP resv session expired: %s\t-->%s\n",temp->sender, temp->receiver);
 		pthread_mutex_lock(&resv_list_mutex);
                 resv_head = delete_session(resv_head, temp);
@@ -105,7 +105,7 @@ void resv_timer_handler(union sigval sv) {
     log_message("timer handler \n");
     while(temp != NULL) {
         if((now - temp->last_path_time) > TIMEOUT) {
-            log_message("RSVP resv session expired: %s\t-->%s\n",temp->sender, temp->receiver);
+            log_message("RSVP resv session expired:  tunnel id %d %s\t-->%s\n",temp->tunnel_id, temp->sender, temp->receiver);
 
 	    //delete node
 	    pthread_mutex_lock(&path_tree_mutex);
@@ -120,6 +120,24 @@ void resv_timer_handler(union sigval sv) {
             path_head = delete_session(path_head, temp);
 	    print_session(path_head);
 	    pthread_mutex_unlock(&path_list_mutex);
+
+	    if(temp->dest) { 
+		pthread_mutex_lock(&resv_tree_mutex);
+            	log_message("deleteing node and sess for tunnel id %d from resv tree", temp->tunnel_id);
+                display_tree_debug(resv_tree, 0);
+            	if(search_node(resv_tree, temp->tunnel_id, compare_resv_del) != NULL){
+                	delete_node(resv_tree, temp->tunnel_id, compare_resv_del, 0);
+                	display_tree_debug(resv_tree, 0);
+            	}
+            	pthread_mutex_unlock(&resv_tree_mutex);
+
+		log_message("RSVP resv session expired: %s\t-->%s\n",temp->sender, temp->receiver);
+                pthread_mutex_lock(&resv_list_mutex);
+                resv_head = delete_session(resv_head, temp);
+                print_session(resv_head);
+                pthread_mutex_unlock(&resv_list_mutex);
+	    }
+		
         } else if((now - temp->last_path_time) < INTERVAL) {
             log_message(" less than 30 sec\n");
             temp = temp->next;
