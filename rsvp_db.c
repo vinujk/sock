@@ -94,8 +94,9 @@ struct session* delete_session(struct session* head, struct session* sess) {
         } else {
             temp = sess->next;
             *sess = *sess->next;
-            free(temp);
-	    return sess;
+            if(temp != NULL)
+            	free(temp);
+	    //return sess;
         }
 }
 

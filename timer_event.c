@@ -110,8 +110,9 @@ void resv_timer_handler(union sigval sv) {
 	    //delete node
 	    pthread_mutex_lock(&path_tree_mutex);
 	    if(search_node(path_tree, temp->tunnel_id, compare_path_del) != NULL) {
-            	delete_node(path_tree, temp->tunnel_id, compare_path_del, 1);
-                display_tree_debug(path_tree, 1);
+		display_tree_debug(path_tree, 1);
+            	path_tree = delete_node(path_tree, temp->tunnel_id, compare_path_del, 1);
+		display_tree_debug(path_tree, 1);
             }
 	    pthread_mutex_unlock(&path_tree_mutex);
 	
@@ -126,7 +127,8 @@ void resv_timer_handler(union sigval sv) {
             	log_message("deleteing node and sess for tunnel id %d from resv tree", temp->tunnel_id);
                 display_tree_debug(resv_tree, 0);
             	if(search_node(resv_tree, temp->tunnel_id, compare_resv_del) != NULL){
-                	delete_node(resv_tree, temp->tunnel_id, compare_resv_del, 0);
+			display_tree_debug(resv_tree, 0);
+                	resv_tree=delete_node(resv_tree, temp->tunnel_id, compare_resv_del, 0);
                 	display_tree_debug(resv_tree, 0);
             	}
             	pthread_mutex_unlock(&resv_tree_mutex);
