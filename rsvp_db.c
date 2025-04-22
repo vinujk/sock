@@ -78,26 +78,28 @@ struct session* insert_session(struct session* sess, uint16_t t_id, char sender[
 }
 
 
-struct session* delete_session(struct session* head, struct session* sess) { 
+struct session* delete_session(struct session* head, struct session* sess, struct session* prev) { 
 
     struct session *temp = NULL;
 
     if( head == NULL)
-	return NULL;
+        return NULL;
 
     log_message("delete session\n");
-       if(head == sess) { 
-            temp = head;
-            head = head->next;
-            free(temp);
-            return head;
-        } else {
-            temp = sess->next;
-            *sess = *sess->next;
-            if(temp != NULL)
-            	free(temp);
-	    //return sess;
+    if(head == sess) { 
+        temp = head;
+        head = head->next;
+        free(temp);
+        return head;
+    } else {
+        temp = sess->next;
+        if(temp == NULL) {
+            prev->next = NULL;
+            return;
         }
+        *sess = *sess->next;
+        free(temp);
+    }
 }
 
 void print_session (struct session* head) {
@@ -260,12 +262,12 @@ db_node* delete_node(db_node* node, uint16_t tunnel_id, int (*cmp)(uint16_t , co
                 node = NULL;
             } else {
                 *node = *temp; // Copy the contents
-	    }
-	    if(msg) {
-	        free((path_msg*) temp->data);
-	    } else {
-	        free((resv_msg*) temp->data);
-	    }
+            }
+            if(msg) {
+                free((path_msg*) temp->data);
+            } else {
+                free((resv_msg*) temp->data);
+            }
             free(temp);
         } else {
             db_node* temp = min_node(node->right);
@@ -331,7 +333,7 @@ void update_tables(uint16_t tunnel_id) {
 		return;
 	}
 
-	/*db_node* temp2 = search_node(path_tree, tunnel_id, compare_resv_del);
+	/*db_node* temp2 = search_node(path_tree, tunnel_id, compare_path_del);
 	if(temp2 != NULL)
         	pa = (path_msg*)temp2->data;
 		//update path table

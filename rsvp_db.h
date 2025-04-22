@@ -76,11 +76,11 @@ static inline int get_balance(db_node *node) {
     return node ? get_height(node->left) - get_height(node->right) : 0;
 }
 
-typedef int (*cmp)(uint16_t , const void *);
-typedef int (*cmp1) (const void*, const void *);
-db_node* insert_node(db_node *, void *, cmp1 func);
-db_node* delete_node(db_node *, uint16_t, cmp func, uint8_t);
-db_node* search_node(db_node *, uint16_t, cmp func);
+typedef int (*cmp_tunnel_id)(uint16_t , const void *);
+typedef int (*cmp_message) (const void*, const void *);
+db_node* insert_node(db_node *, void *, cmp_message func);
+db_node* delete_node(db_node *, uint16_t, cmp_tunnel_id func, uint8_t);
+db_node* search_node(db_node *, uint16_t, cmp_tunnel_id func);
 
 void update_tables(uint16_t);
 void free_tree(db_node *);
@@ -90,7 +90,7 @@ void display_tree(db_node * , uint8_t , char * , size_t);
 void print_session(struct session*);
 struct session* search_session(struct session*, uint16_t);
 struct session* insert_session(struct session*, uint16_t, char[], char[], uint8_t);
-struct session* delete_session(struct session*, struct session*);
+struct session* delete_session(struct session*, struct session*, struct session*);
 void insert(char[], uint8_t);
 db_node* path_tree_insert(db_node*, char[], struct in_addr);
 db_node* resv_tree_insert(db_node*, char[], struct in_addr, uint8_t);
