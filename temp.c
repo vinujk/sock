@@ -1,69 +1,95 @@
+#define MAX_HOPS 30
+#define TIMEOUT 1
+#define DEST_PORT 33434
+
+// Calculate checksum for ICMP packet
 unsigned short checksum(void *b, int len) {
     unsigned short *buf = b;
     unsigned int sum = 0;
-    unsigned short result;
-
-    for (sum = 0; len > 1; len -= 2)
+    for (; len > 1; len -= 2)
         sum += *buf++;
     if (len == 1)
         sum += *(unsigned char*)buf;
     sum = (sum >> 16) + (sum & 0xFFFF);
     sum += (sum >> 16);
-    result = ~sum;
-    return result;
+    return ~sum;
 }
 
-int main() {
-    int sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-    if (sockfd < 0) {
+int main(int argc, char *argv[]) {
+    if (argc != 2) {
+        printf("Usage: %s <destination IP>\n", argv[0]);
+        return 1;
+    }
+
+    char *dest_ip = argv[1];
+    int sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+    if (sock < 0) {
         perror("socket");
         return 1;
     }
 
-    char packet[1024];
-    struct iphdr *ip = (struct iphdr *)packet;
-    struct icmphdr *icmp = (struct icmphdr *)(packet + sizeof(struct iphdr));
+    struct sockaddr_in dest_addr = {0};
+    dest_addr.sin_family = AF_INET;
+    inet_pton(AF_INET, dest_ip, &dest_addr.sin_addr);
 
-    memset(packet, 0, sizeof(packet));
+    for (int ttl = 1; ttl <= MAX_HOPS; ttl++) {
+        // Set TTL
+        if (setsockopt(sock, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl)) < 0) {
+            perror("setsockopt");
+            return 1;
+        }
 
-    // Fill in the IP Header
-    ip->ihl = 5;
-    ip->version = 4;
-    ip->tos = 0;
-    ip->tot_len = htons(sizeof(struct iphdr) + sizeof(struct icmphdr));
-    ip->id = htons(54321);
-    ip->ttl = 64;
-    ip->protocol = IPPROTO_ICMP;
-    ip->saddr = inet_addr("172.168.10.2"); // Set custom source IP
-    ip->daddr = inet_addr("172.168.30.2"); // Destination IP
-    ip->check = checksum(ip, sizeof(struct iphdr));
+        // Set socket timeout
+        struct timeval timeout = {TIMEOUT, 0};
+        setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
-    // Fill in the ICMP Header
-    icmp->type = ICMP_ECHO;
-    icmp->code = 0;
-    icmp->un.echo.id = htons(1234);
-    icmp->un.echo.sequence = htons(1);
-    icmp->checksum = 0;
-    icmp->checksum = checksum(icmp, sizeof(struct icmphdr));
+        // Build ICMP Echo Request
+        char sendbuf[64];
+        struct icmp *icmp_hdr = (struct icmp *)sendbuf;
+        memset(sendbuf, 0, sizeof(sendbuf));
+        icmp_hdr->icmp_type = ICMP_ECHO;
+        icmp_hdr->icmp_code = 0;
+        icmp_hdr->icmp_id = getpid();
+        icmp_hdr->icmp_seq = ttl;
+        icmp_hdr->icmp_cksum = checksum(sendbuf, sizeof(sendbuf));
 
-    // Set socket option to include IP header
-    int one = 1;
-    if (setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, &one, sizeof(one)) < 0) {
-        perror("setsockopt");
-        return 1;
+        struct timeval start, end;
+        gettimeofday(&start, NULL);
+
+        sendto(sock, sendbuf, sizeof(sendbuf), 0,
+               (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+
+        // Receive ICMP reply
+        char recvbuf[1024];
+        struct sockaddr_in reply_addr;
+        socklen_t addrlen = sizeof(reply_addr);
+
+        int n = recvfrom(sock, recvbuf, sizeof(recvbuf), 0,
+                         (struct sockaddr *)&reply_addr, &addrlen);
+
+        gettimeofday(&end, NULL);
+
+        double rtt = (end.tv_sec - start.tv_sec) * 1000.0 +
+                     (end.tv_usec - start.tv_usec) / 1000.0;
+
+        if (n < 0) {
+            printf("%2d  *\n", ttl);
+        } else {
+            char addr_str[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, &reply_addr.sin_addr, addr_str, sizeof(addr_str));
+
+            struct ip *ip_hdr = (struct ip *)recvbuf;
+            struct icmp *icmp_resp = (struct icmp *)(recvbuf + (ip_hdr->ip_hl << 2));
+
+            printf("%2d  %-15s  %.2f ms\n", ttl, addr_str, rtt);
+
+            // ICMP_ECHOREPLY means we reached the destination
+            if (icmp_resp->icmp_type == ICMP_ECHOREPLY) {
+                break;
+            }
+        }
     }
 
-    struct sockaddr_in dest;
-    dest.sin_family = AF_INET;
-    dest.sin_addr.s_addr = ip->daddr;
-
-    if (sendto(sockfd, packet, sizeof(struct iphdr) + sizeof(struct icmphdr), 0,
-               (struct sockaddr *)&dest, sizeof(dest)) < 0) {
-        perror("sendto");
-        return 1;
-    }
-
-    printf("ICMP Echo Request sent from 172.168.10.2 to 172.168.30.2\n");
-    close(sockfd);
+    close(sock);
     return 0;
 }
