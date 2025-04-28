@@ -93,3 +93,27 @@ int main(int argc, char *argv[]) {
     close(sock);
     return 0;
 }
+
+
+
+
+
+int main() {
+    FILE *fp;
+    char path[1024];
+
+    // Run traceroute command and open a pipe to read its output
+    fp = popen("traceroute 8.8.8.8", "r");
+    if (fp == NULL) {
+        perror("popen");
+        exit(1);
+    }
+
+    // Read and display output line by line
+    while (fgets(path, sizeof(path), fp) != NULL) {
+        printf("%s", path); // Or store it into a buffer instead of printing
+    }
+
+    pclose(fp);
+    return 0;
+}
