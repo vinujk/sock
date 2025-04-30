@@ -186,6 +186,9 @@ int rsvp_delete_config(const char* args, char* response, size_t response_size) {
 	
 
 path_msg* create_path(const char *args, char *response, size_t response_size) {
+    char Srcip[16];
+    uint32_t ifh;
+    uint8_t prefix_len;
     path_msg *path = malloc(sizeof(path_msg));
     char dev[16];
     if (!path) {
@@ -198,7 +201,7 @@ path_msg* create_path(const char *args, char *response, size_t response_size) {
     path->src_ip.s_addr = 0;
     path->dest_ip.s_addr = 0;
     path->nexthop_ip.s_addr = 0;
-    inet_pton(AF_INET, "0.0.0.0", &path->p_nexthop_ip);
+    //inet_pton(AF_INET, "0.0.0.0", &path->p_nexthop_ip);
     path->interval = 30;
     path->setup_priority = 7;
     path->hold_priority = 7;
@@ -285,12 +288,19 @@ path_msg* create_path(const char *args, char *response, size_t response_size) {
     // Set nexthop based on path type
     char nhip[16];
     //if (path->path_type == 0) { // Dynamic
-    if(get_nexthop(inet_ntoa(path->dest_ip), nhip, &path->prefix_len, dev, &path->IFH)) { 
+    if(get_nexthop(inet_ntoa(path->dest_ip), nhip, &prefix_len, dev, &ifh)) { 
 	strcpy(path->dev, dev);
+	path->IFH = ifh;
+        path->prefix_len = prefix_len;
         if (strcmp(nhip, " ") == 0) {
 		inet_pton(AF_INET, "0.0.0.0", &path->nexthop_ip);
        	} else {
 		inet_pton(AF_INET, nhip, &path->nexthop_ip);
+		inet_pton(AF_INET, "0.0.0.0", &path->p_srcip);
+  		if(get_srcip(nhip, Srcip, &ifh)) {
+                	inet_pton(AF_INET, Srcip, &path->e_srcip);
+			path->IFH = ifh;
+		}
 	}
     } else {
        	log_message("No route to destination\n");

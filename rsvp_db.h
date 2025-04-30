@@ -49,7 +49,8 @@ typedef struct path_msg {
     struct in_addr src_ip;
     struct in_addr dest_ip;
     struct in_addr nexthop_ip;
-    struct in_addr p_nexthop_ip;
+    struct in_addr p_srcip;
+    struct in_addr e_srcip;
     uint16_t tunnel_id;
     uint32_t IFH;
     uint32_t interval;
@@ -67,6 +68,8 @@ typedef struct resv_msg {
     struct in_addr src_ip;
     struct in_addr dest_ip;
     struct in_addr nexthop_ip;
+    struct in_addr e_srcip;
+    struct in_addr p_srcip;
     uint16_t tunnel_id;
     uint32_t IFH;
     uint32_t interval;
@@ -112,7 +115,7 @@ struct session* search_session(struct session*, uint16_t);
 struct session* insert_session(struct session*, uint16_t, char[], char[], uint8_t);
 struct session* delete_session(struct session*, struct session*, struct session*);
 void insert(char[], uint8_t);
-db_node* path_tree_insert(db_node*, char[], struct in_addr);
+db_node* path_tree_insert(db_node*, char[]);
 db_node* resv_tree_insert(db_node*, char[], struct in_addr, uint8_t);
 int compare_path_del(uint16_t , const void *);
 int compare_resv_del(uint16_t , const void *);

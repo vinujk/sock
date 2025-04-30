@@ -500,6 +500,7 @@ void display_tree(db_node *node, uint8_t msg, char *buffer, size_t buffer_size) 
 
 /* Display path tree (inorder traversal) */
 void display_tree_debug(db_node *node, uint8_t msg) {
+    char Psrcip[16], Esrcip[16];
     if (node == NULL){ 
         log_message("No nodes in tree");
         return;
@@ -510,21 +511,29 @@ void display_tree_debug(db_node *node, uint8_t msg) {
         inet_ntop(AF_INET, &p->src_ip, source_ip, 16);
         inet_ntop(AF_INET, &p->dest_ip, destination_ip, 16);
         inet_ntop(AF_INET, &p->nexthop_ip, next_hop_ip, 16);
-        log_message("Tunnel ID: %u, Src: %s, Dest: %s, Next Hop: %s\n",
+	inet_ntop(AF_INET, &p->p_srcip, Psrcip, 16);
+	inet_ntop(AF_INET, &p->e_srcip, Esrcip, 16);
+        log_message("Tunnel ID: %u, Src: %s, Dest: %s, Next Hop: %s Psrcip = %s Esrcip = %s\n",
                 p->tunnel_id,
                 source_ip,
                 destination_ip,
-                next_hop_ip);
+                next_hop_ip,
+		Psrcip,
+		Esrcip);
     } else {
         resv_msg* r = node->data;
         inet_ntop(AF_INET, &r->src_ip, source_ip, 16);
         inet_ntop(AF_INET, &r->dest_ip, destination_ip, 16);
         inet_ntop(AF_INET, &r->nexthop_ip, next_hop_ip, 16);
-        log_message("Tunnel ID: %u, Src: %s, Dest: %s, Next Hop: %s, prefix_len: %d, In_label: %d, Out_label: %d\n",
+ 	inet_ntop(AF_INET, &r->p_srcip, Psrcip, 16);
+	inet_ntop(AF_INET, &r->e_srcip, Esrcip, 16);
+        log_message("Tunnel ID: %u, Src: %s, Dest: %s, Next Hop: %s, Psrcip = %s, Esrcip = %s, prefix_len: %d, In_label: %d, Out_label: %d\n",
                 r->tunnel_id,
                 source_ip,
                 destination_ip,
                 next_hop_ip,
+                Psrcip,
+		Esrcip,
                 r->prefix_len,
                 (r->in_label),
                 (r->out_label));
@@ -535,11 +544,11 @@ void display_tree_debug(db_node *node, uint8_t msg) {
 //Fetch information from receive buffer
 //-------------------------------------
 
-db_node* path_tree_insert(db_node* path_tree, char buffer[], struct in_addr p_nhip) {
+db_node* path_tree_insert(db_node* path_tree, char buffer[]) {
     uint32_t ifh = 0;
     uint8_t prefix_len = 0;
-    char next_hop_ip[16];
     char dev[16];
+    char srcip[16];
 
     struct session_object *session_obj = (struct session_object*)(buffer + START_RECV_SESSION_OBJ);
     struct hop_object *hop_obj = (struct hop_object*)(buffer + START_RECV_HOP_OBJ);
@@ -551,7 +560,7 @@ db_node* path_tree_insert(db_node* path_tree, char buffer[], struct in_addr p_nh
     p->tunnel_id = htons(session_obj->tunnel_id);
     p->src_ip = (session_obj->src_ip);
     p->dest_ip = (session_obj->dst_ip);
-    p->p_nexthop_ip = p_nhip;
+    p->p_srcip = hop_obj->next_hop;
     p->interval = time_obj->interval;
     p->setup_priority = session_attr_obj->setup_prio;
     p->hold_priority = session_attr_obj->hold_prio;
@@ -562,14 +571,20 @@ db_node* path_tree_insert(db_node* path_tree, char buffer[], struct in_addr p_nh
 
     if(get_nexthop(inet_ntoa(p->dest_ip), nhip, &prefix_len, dev, &ifh)) {
         strcpy(p->dev, dev);
-        p->IFH = ifh;
+        //p->IFH = ifh;
         if(strcmp(nhip, " ") == 0) {
             inet_pton(AF_INET, "0.0.0.0", &p->nexthop_ip);
+	    inet_pton(AF_INET, "0.0.0.0", &p->e_srcip);
+	    p->IFH = 0; 
             p->prefix_len = prefix_len;
         }
         else {
-            inet_pton(AF_INET, nhip, &p->nexthop_ip);
+  	    inet_pton(AF_INET, nhip, &p->nexthop_ip);
             p->prefix_len = prefix_len;
+	    if(get_srcip(nhip, srcip, &ifh)) {
+            	inet_pton(AF_INET, srcip, &p->e_srcip);
+                p->IFH = ifh;
+            }
         }
     } else {
         log_message("No route to destination\n");
@@ -582,6 +597,7 @@ db_node* path_tree_insert(db_node* path_tree, char buffer[], struct in_addr p_nh
 db_node* resv_tree_insert(db_node* resv_tree, char buffer[], struct in_addr p_nhip, uint8_t path_dst_reach) {
 
     uint32_t ifh = 0;
+    char srcip[16], nhip[16];
     uint8_t prefix_len = 0;
 
     struct session_object *session_obj = (struct session_object*)(buffer + START_RECV_SESSION_OBJ);
@@ -595,36 +611,36 @@ db_node* resv_tree_insert(db_node* resv_tree, char buffer[], struct in_addr p_nh
     p->src_ip = (session_obj->src_ip);
     p->dest_ip = (session_obj->dst_ip);
     p->nexthop_ip = p_nhip; 
+    p->p_srcip = hop_obj->next_hop;
     p->interval = time_obj->interval;
 
     if(path_dst_reach) {
         p->in_label = (3);
         p->out_label = (-1);
+        inet_pton(AF_INET, "0.0.0.0", &p->p_srcip);
+	if(get_srcip(nhip, srcip, &ifh)) {
+    	    inet_pton(AF_INET, srcip, &p->e_srcip);
+            p->IFH = ifh;
+    	}
         //	p->prefix_len = prefix_len;
     }
 
-    /*    if (get_nexthop(inet_ntoa(p->src_ip), nhip, &prefix_len,dev, &ifh)) {
-          strcpy(p->dev, dev);
-          p->IFH = ifh;
-          p->prefix_len = prefix_len;
-          log_message("prefix_len = %d\n", prefix_len);
-          */        if(!path_dst_reach) {
-              p->out_label = ntohl(label_obj->label);
-          }
-          if(strcmp(inet_ntoa(p->nexthop_ip), "0.0.0.0") == 0) {
-              if(!path_dst_reach)
-                  p->in_label = (-1);
-              //inet_pton(AF_INET, nhip, &p->nexthop_ip);
-          }
-          else {
-              if(!path_dst_reach)
-                  p->in_label = allocate_label();
-              //inet_pton(AF_INET, nhip, &p->nexthop_ip);
-          }
-          /*} else {
-            log_message("No route to Source\n");
-            return NULL;
-            }*/
-
-          return insert_node(resv_tree, p, compare_resv_insert, 0);
+    if(!path_dst_reach) {
+	//p->p_srcip = hop_object->next_hop; 
+        p->out_label = ntohl(label_obj->label);
+        p->p_srcip = hop_obj->next_hop;
+          
+	if(strcmp(inet_ntoa(p->nexthop_ip), "0.0.0.0") == 0) {
+              p->in_label = (-1);
+	      inet_pton(AF_INET,"0.0.0.0", &p->e_srcip);
+	      p->IFH = 0;		
+        } else {
+              p->in_label = allocate_label();
+	      if(get_srcip(nhip, srcip, &ifh)) {
+        	    inet_pton(AF_INET, srcip, &p->e_srcip);
+           	    p->IFH = ifh;
+              }
+        }
+    }
+    return insert_node(resv_tree, p, compare_resv_insert, 0);
 }

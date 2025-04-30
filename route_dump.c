@@ -335,3 +335,29 @@ int get_nexthop(const char *dst_ip, char *nh_ip, uint8_t *pref_len, char* Dev, i
 
     return 0;
 }
+
+
+int get_srcip(const char *nhip, char *srcip, int *Ifh) {
+
+     int temp = 0;
+
+    strcpy(dest_ip, nhip);
+    int nl_sock = open_netlink();
+
+    if (do_route_dump_requst(nl_sock) < 0) {
+        perror("Failed to perfom request");
+        close(nl_sock);
+        return -1;
+    }
+    temp = get_route_dump_response(nl_sock);
+	
+    strcpy(srcip, src_ip);
+    *Ifh = ifh;
+
+    close (nl_sock);
+
+    if(temp)
+        return 1;
+
+    return 0;
+}
