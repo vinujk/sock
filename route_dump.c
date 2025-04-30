@@ -205,7 +205,8 @@ int print_route(struct nlmsghdr* nl_header_answer)
     }
 
     if(is_ip_in_subnet(dest_ip, route, prefix_len) == 1) {
-	log_message("next hop for destination ip %s is -> %s prefix_len = %d dev = %s ifh = %d\n", dest_ip,nh,prefix_len, DEv, ifh);
+	log_message("next hop for destination ip %s is -> %s src = %s prefix_len = %d dev = %s ifh = %d\n", 
+								dest_ip,nh,src_ip,prefix_len, DEv, ifh);
         return 1;
     } else {
         return 0;

@@ -611,9 +611,10 @@ db_node* resv_tree_insert(db_node* resv_tree, char buffer[], struct in_addr p_nh
     p->src_ip = (session_obj->src_ip);
     p->dest_ip = (session_obj->dst_ip);
     p->nexthop_ip = p_nhip; 
-    p->p_srcip = hop_obj->next_hop;
+    //p->p_srcip = hop_obj->next_hop;
     p->interval = time_obj->interval;
 
+    inet_ntop(AF_INET, &p->nexthop_ip, nhip, INET_ADDRSTRLEN);
     if(path_dst_reach) {
         p->in_label = (3);
         p->out_label = (-1);
@@ -626,7 +627,6 @@ db_node* resv_tree_insert(db_node* resv_tree, char buffer[], struct in_addr p_nh
     }
 
     if(!path_dst_reach) {
-	//p->p_srcip = hop_object->next_hop; 
         p->out_label = ntohl(label_obj->label);
         p->p_srcip = hop_obj->next_hop;
           
