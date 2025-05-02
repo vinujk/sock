@@ -383,13 +383,13 @@ db_node* search_node(db_node *node, uint16_t data, int (*cmp)(uint16_t, const vo
 }
 
 
-void update_tables(uint16_t tunnel_id) {
+void update_tables(db_node *resv_node, uint16_t tunnel_id) {
 
     char d_ip[16], n_ip[16], command[200];
-    resv_msg* p;
-    path_msg* pa;
 
-    db_node* temp1 = search_node(resv_tree, tunnel_id, compare_resv_del);
+    resv_msg *p = (resv_msg*)resv_node->data;
+    
+    /*db_node* temp1 = search_node(resv_tree, tunnel_id, compare_resv_del);
     if( temp1 != NULL)
         p = (resv_msg*)temp1->data;
     else {
@@ -401,7 +401,7 @@ void update_tables(uint16_t tunnel_id) {
     if(temp2 != NULL)
     	pa = (path_msg*)temp2->data;
     
-    //update path table
+    update path table
     if(get_nexthop(inet_ntoa(pa->dest_ip), nhip, &pa->prefix_len, dev, &pa->IFH)) {
     	if (strcmp(nhip, " ") == 0) {
     		inet_pton(AF_INET, "0.0.0.0", &pa->nexthop_ip);
@@ -410,23 +410,22 @@ void update_tables(uint16_t tunnel_id) {
     	}
     } else {
     	log_message("No route to destiantion %s\n", inet_ntoa(pa->dest_ip));
-    }
-    //else 
-    //return;
+    }*/
    
-    //path network 
-    //path prefix len
-    //path nexthop ip
-    //path dev
-    
-    inet_ntop(AF_INET, &pa->dest_ip, d_ip, 16);
-    inet_ntop(AF_INET, &pa->nexthop_ip, n_ip, 16);
+    struct in_addr net, mask;
+    char network[16];
+
+    mask.s_addr = htonl(~((1 << (32 - p->prefix_len)) - 1));
+    net.s_addr = p->dest_ip.s_addr & mask.s_addr; 
+
+    inet_ntop(AF_INET, &net, network, 16);
+    inet_ntop(AF_INET, &p->p_srcip, n_ip, 16);
 
     //update LFIB table
     if(p->in_label == -1 && (p->out_label >= BASE_LABEL)) {
         //push label delete
         snprintf(command, sizeof(command), "ip route del %s/%d encap mpls %d via %s dev %s",
-                d_ip, pa->prefix_len, (p->out_label), n_ip, pa->dev);
+                network, p->prefix_len, (p->out_label), n_ip, p->dev);
         log_message(" ========== 1 %s \n", command);
     } else if(p->in_label >= BASE_LABEL && p->out_label >= BASE_LABEL) {
         //swap label delete
@@ -437,7 +436,7 @@ void update_tables(uint16_t tunnel_id) {
     } else if(p->in_label > BASE_LABEL && (p->out_label == IMPLICIT_NULL || p->out_label == EXPLICIT_NULL)) {
         //explicit label =  3 delete
         snprintf(command, sizeof(command), "ip -M route del %d via inet %s dev %s",
-                (p->in_label), n_ip, pa->dev);
+                (p->in_label), n_ip, p->dev);
         log_message(" ========== 2 %s - ", command);
         system(command);
     } else {

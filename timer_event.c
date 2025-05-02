@@ -64,6 +64,7 @@ void path_timer_handler(union sigval sv) {
     struct session* temp = NULL;
     struct session* prev = NULL;
     temp = resv_head;
+    db_node *resv_node = NULL;
 
     log_message("++++++++path timer handler \n");
     while(temp != NULL) {
@@ -74,10 +75,13 @@ void path_timer_handler(union sigval sv) {
         }
 
         if((now - temp->last_path_time) > TIMEOUT) {
+  	    //update_table(temp->tunnel_id);
             pthread_mutex_lock(&resv_tree_mutex);
             log_message("RSVP path session expired delete tunnel id %d from resv tree", temp->tunnel_id);
             display_tree_debug(resv_tree, 0);
-            if(search_node(resv_tree, temp->tunnel_id, compare_resv_del) != NULL){
+	    resv_node = search_node(resv_tree, temp->tunnel_id, compare_resv_del);
+	    if(resv_node != NULL) {
+	 	update_tables(resv_node, temp->tunnel_id);	
                 resv_tree = delete_node(resv_tree, temp->tunnel_id, compare_resv_del, 0);
                 display_tree_debug(resv_tree, 0);
             }
@@ -122,8 +126,8 @@ void resv_timer_handler(union sigval sv) {
             pthread_mutex_lock(&path_tree_mutex);
             if(search_node(path_tree, temp->tunnel_id, compare_path_del) != NULL) {
                 path_tree = delete_node(path_tree, temp->tunnel_id, compare_path_del, 1);
-                display_tree_debug(path_tree, 1);
             }
+            display_tree_debug(path_tree, 1);
             pthread_mutex_unlock(&path_tree_mutex);
 
             //delete session

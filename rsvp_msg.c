@@ -348,6 +348,10 @@ void receive_resv_message(int sock, char buffer[], struct sockaddr_in sender_add
 
         struct in_addr net, mask;
         char network[16];
+    
+        p->prefix_len = pa->prefix_len;
+ 	strcpy(p->dev, pa->dev);
+
         mask.s_addr = htonl(~((1 << (32 - pa->prefix_len)) - 1));
         net.s_addr = p->dest_ip.s_addr & mask.s_addr;
 
@@ -358,14 +362,14 @@ void receive_resv_message(int sock, char buffer[], struct sockaddr_in sender_add
             log_message("****reached the source, end oF rsvp tunnel***\n");
 
             snprintf(command, sizeof(command), "ip route add %s/%d encap mpls %d via %s dev %s",
-                    network, pa->prefix_len, (p->out_label), n_ip, pa->dev);
+                    network, p->prefix_len, (p->out_label), n_ip, p->dev);
 
             log_message(" ========== 1 %s \n", command);
             system(command);
         } else {
             if(p->out_label == 3) {
                 snprintf(command, sizeof(command), "ip -M route add %d via inet %s dev %s",
-                        (p->in_label), n_ip, pa->dev);
+                        (p->in_label), n_ip, p->dev);
                 log_message(" ========== 2 %s ", command);
                 system(command);
             } else {

@@ -132,6 +132,7 @@ int rsvp_delete_config(const char* args, char* response, size_t response_size) {
     strncpy(args_copy, args, sizeof(args_copy));
     args_copy[sizeof(args_copy) - 1] = '\0';	
     struct session* temp1 = NULL;
+    db_node *path_node;
 
     // Check for help
     if (strcmp(args, "-h") == 0 || strcmp(args, "--help") == 0) {
@@ -161,7 +162,15 @@ int rsvp_delete_config(const char* args, char* response, size_t response_size) {
     }
 
     log_message("before delete node tunnel id %d path_tree = %d",tunnel_id,path_tree);
-    if(search_node(path_tree, tunnel_id, compare_path_del) != NULL) {
+    path_node = search_node(path_tree, tunnel_id, compare_path_del); 
+    if(path_node != NULL) {
+ 	path_msg *p = (path_msg*)path_node->data;   
+        if(strcmp(inet_ntoa(p->p_srcip), "0.0.0.0") != 0) {
+		log_message("Delete from the Node where you have initiated the RSVP config\n");
+		log_message("Not Deleting Returning from here\n");
+		return 0;
+        }
+        	
     	db_node *temp = delete_node(path_tree, tunnel_id, compare_path_del, 1);
     	if(temp == NULL) {
 		path_tree = temp;

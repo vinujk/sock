@@ -105,7 +105,7 @@ db_node* insert_node(db_node *, void *, cmp_message func, uint8_t);
 db_node* delete_node(db_node *, uint16_t, cmp_tunnel_id func, uint8_t);
 db_node* search_node(db_node *, uint16_t, cmp_tunnel_id func);
 
-void update_tables(uint16_t);
+void update_tables(db_node*,uint16_t);
 void free_tree(db_node *);
 void display_tree_debug(db_node *, uint8_t);
 void display_tree(db_node * , uint8_t , char * , size_t);
