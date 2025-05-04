@@ -91,27 +91,30 @@ struct session* insert_session(struct session* sess, uint16_t t_id, char sender[
 }
 
 
-struct session* delete_session(struct session* head, struct session* sess, struct session* prev) { 
+struct session* delete_session(struct session* head, struct session** sess, struct session** prev) { 
 
     struct session *temp = NULL;
 
     if( head == NULL)
         return NULL;
 
-    if(head == sess) { 
+    if(head == *sess) { 
         temp = head;
         head = head->next;
         free(temp);
+ 	*sess = NULL;
         return head;
     } else {
-        temp = sess->next;
+        temp = (*sess)->next;
         if(temp == NULL) {
             print_session(head);
-            prev->next = NULL;
-            free(sess);
+            (*prev)->next = NULL;
+            free(*sess);
+	    *sess = NULL;
             return head;
         }
-        *sess = *sess->next;
+        (*prev)->next = temp;
+	*sess = NULL;
         free(temp);
         return head;
     }
@@ -383,35 +386,13 @@ db_node* search_node(db_node *node, uint16_t data, int (*cmp)(uint16_t, const vo
 }
 
 
-void update_tables(db_node *resv_node, uint16_t tunnel_id) {
-
+//void update_tables(db_node *resv_node) {
+void update_tables(void *arg) {
+    ThreadArgs *p = (ThreadArgs*)arg;
     char d_ip[16], n_ip[16], command[200];
 
-    resv_msg *p = (resv_msg*)resv_node->data;
+    //resv_msg *p = (resv_msg*)resv_node->data;
     
-    /*db_node* temp1 = search_node(resv_tree, tunnel_id, compare_resv_del);
-    if( temp1 != NULL)
-        p = (resv_msg*)temp1->data;
-    else {
-        log_message("tunnel id %d not founD\n", tunnel_id); 	
-        return;
-    }
-
-    db_node* temp2 = search_node(path_tree, tunnel_id, compare_path_del);
-    if(temp2 != NULL)
-    	pa = (path_msg*)temp2->data;
-    
-    update path table
-    if(get_nexthop(inet_ntoa(pa->dest_ip), nhip, &pa->prefix_len, dev, &pa->IFH)) {
-    	if (strcmp(nhip, " ") == 0) {
-    		inet_pton(AF_INET, "0.0.0.0", &pa->nexthop_ip);
-    	} else {
-    		inet_pton(AF_INET, nhip, &pa->nexthop_ip);
-    	}
-    } else {
-    	log_message("No route to destiantion %s\n", inet_ntoa(pa->dest_ip));
-    }*/
-   
     struct in_addr net, mask;
     char network[16];
 
@@ -427,13 +408,14 @@ void update_tables(db_node *resv_node, uint16_t tunnel_id) {
         snprintf(command, sizeof(command), "ip route del %s/%d encap mpls %d via %s dev %s",
                 network, p->prefix_len, (p->out_label), n_ip, p->dev);
         log_message(" ========== 1 %s \n", command);
+	system(command);
     } else if(p->in_label >= BASE_LABEL && p->out_label >= BASE_LABEL) {
         //swap label delete
         snprintf(command, sizeof(command), "ip -M route del %d as %d via inet %s",
                 (p->in_label), (p->out_label), n_ip);
         log_message(" ========== 3 %s - ", command);
         system(command);
-    } else if(p->in_label > BASE_LABEL && (p->out_label == IMPLICIT_NULL || p->out_label == EXPLICIT_NULL)) {
+    } else if(p->in_label >= BASE_LABEL && (p->out_label == IMPLICIT_NULL || p->out_label == EXPLICIT_NULL)) {
         //explicit label =  3 delete
         snprintf(command, sizeof(command), "ip -M route del %d via inet %s dev %s",
                 (p->in_label), n_ip, p->dev);
@@ -442,6 +424,8 @@ void update_tables(db_node *resv_node, uint16_t tunnel_id) {
     } else {
         //not a valid label
     }
+
+    free(p);
 
     //update labels
     free_label(p->in_label);
