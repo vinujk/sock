@@ -1,5 +1,7 @@
 #define PATH_MSG_TYPE               1   // RSVP-TE PATH Message Type
 #define RESV_MSG_TYPE               2   // RSVP-TE RESV Message Type
+#define PATHTEAR_MSG_TYPE           5   // RSVP-TE PATHTEAR Message Type
+#define RESVTEAR_MSG_TYPE           6   // RSVP-TE RESVTEAR Message Type
 
 #define IP_ADDRLEN                  16
 
@@ -31,21 +33,46 @@
 #define START_SENT_LABEL_REQ (START_SENT_TIME_OBJ + sizeof(struct time_object)) 
 #define START_RECV_LABEL_REQ (IP +  START_SENT_LABEL_REQ)
 
+
+
 #define START_SENT_SESSION_ATTR_OBJ (START_SENT_LABEL_REQ + sizeof(struct label_req_object))
 #define START_RECV_SESSION_ATTR_OBJ (IP + START_SENT_SESSION_ATTR_OBJ)
 
 #define START_SENT_SENDER_TEMP_OBJ (START_SENT_SESSION_ATTR_OBJ + sizeof(struct session_attr_object))
 #define START_RECV_SENDER_TEMP_OBJ (IP + START_SENT_SENDER_TEMP_OBJ)
 
-#define PATH_PACKET_SIZE (START_SENT_SENDER_TEMP_OBJ + sizeof(struct sender_temp_object))
+#define START_SENT_SENDER_TPSEC_OBJ (START_SENT_SENDER_TEMP_OBJ + sizeof(struct sender_temp_object))
+#define START_RESV_SENDER_TPSEC_OBJ (IP + START_SENT_SENDER_TPSEC_OBJ)
+
+#define START_SENT_AD_SPEC_OBJ (START_SENT_SENDER_TPSEC_OBJ + sizeof(struct sender_tspec_object))
+#define START_RESV_AD_SPEC_OBJ (IP + START_SENT_AD_SPEC_OBJ)
+
+#define PATH_PACKET_SIZE (START_SENT_AD_SPEC_OBJ + sizeof(struct sender_adspec_object))
+
+
+
+#define START_SENT_STYLE_OBJ (START_SENT_TIME_OBJ + sizeof(struct time_object))
+#define START_RECV_STYLE_OBJ (IP + START_SENT_STYLE_OBJ)
+
+#define START_SENT_FLOW_SPEC_OBJ (START_SENT_STYLE_OBJ + sizeof(struct style_object))
+#define START_RECV_FLOW_SPEC_OBJ (IP + START_SENT_FLOW_SPEC_OBJ)
 
 #define START_SENT_FILTER_SPEC_OBJ (START_SENT_TIME_OBJ + sizeof(struct time_object))
 #define START_RECV_FILTER_SPEC_OBJ (IP + START_SENT_FILTER_SPEC_OBJ)
 
-#define START_SENT_LABEL (START_SENT_FILTER_SPEC_OBJ + sizeof(struct Filter_spec_object))
+#define START_SENT_LABEL (START_SENT_FILTER_SPEC_OBJ + sizeof(struct filter_spec_object))
 #define START_RECV_LABEL (IP + START_SENT_LABEL)
 
 #define RESV_PACKET_SIZE (START_SENT_LABEL + sizeof(struct label_object))
+
+
+
+// RSVP TEAR
+#define SENT_PATHTEAR_SENDER_TEMP_OBJ (START_SENT_HOP_OBJ + sizeof(struct hop_object))
+#define RECV_PATHTEAR_SENDER_TEMP_OBJ (IP + SENT_PATHTEAR_SENDER_TEMP_OBJ)
+
+#define PATHTEAR_PKT_SIZE (SENT_PATHTEAR_SENDER_TEMP_OBJ + sizeof(struct sender_temp_object))
+#define RESVTEAR_PKT_SIZE (START_SENT_HOP_OBJ + sizeof(struct hop_object))
 
 // RSVP Common Header (Simplified)
 struct rsvp_header {
@@ -55,8 +82,6 @@ struct rsvp_header {
     uint8_t ttl;
     uint8_t reserved;
     uint16_t length;
-    //struct in_addr sender_ip;
-    //struct in_addr receiver_ip;
 };
 
 // common class Object
@@ -64,13 +89,6 @@ struct class_obj {
     uint16_t length;
     uint8_t class_num;
     uint8_t c_type;
-};
-
-// Label Object for PATH Message
-struct label_req_object {
-    struct class_obj class_obj;
-    uint16_t Reserved;
-    uint16_t L3PID;
 };
 
 //  Session Object for PATH and RESV MessagE
@@ -95,6 +113,16 @@ struct time_object {
     uint32_t interval;
 };
 
+//===============================================
+//Struct only for PATH messages
+//=============================================
+
+// Label Object for PATH Message
+struct label_req_object {
+    struct class_obj class_obj;
+    uint16_t Reserved;
+    uint16_t L3PID;
+};
 
 // Session Attribute Object for PATH Message
 struct session_attr_object {
@@ -103,11 +131,102 @@ struct session_attr_object {
     uint8_t hold_prio;
     uint8_t flags;
     uint8_t name_len;
-    char Name[32];
+    char Name[8];
 };
 
 // Sender Template  Object for PATH Message
 struct sender_temp_object {
+    struct class_obj class_obj;
+    struct in_addr src_ip;
+    uint16_t Reserved;
+    uint16_t LSP_ID;
+};
+
+
+
+// Bucket Parameters common for both TPSEC and Flow spec
+struct bucket_param {
+    uint8_t parameter_id; //0x7f
+    uint8_t flags;        //0x0
+    uint16_t param_len;   //5
+    uint32_t bucket_rate;
+    uint32_t bucket_size;
+    uint32_t peak_data_rate;
+    uint32_t min_policied_unit;
+    uint32_t max_packet_size;
+};
+
+// Sender TSPEC Object for PATH Message
+struct sender_tspec_object {
+    struct class_obj class_obj;
+    uint16_t version_reserved; //version is 4 bit only
+    uint16_t data_len; // is 7 words
+    uint8_t service_hdr; //is 1
+    uint8_t reserved;    // is 0
+    uint16_t service_len; //is 6
+    struct bucket_param bp;
+};
+
+
+
+
+// ADSPEC type object
+struct adspec_type {
+    uint8_t type; // Note: should not change to network laangage while packing message
+    uint8_t flags;
+    uint16_t length;
+    uint32_t value;
+};
+
+// Controlled load
+struct controlled_load {
+    uint8_t service_hdr;
+    uint8_t breakbit;
+    uint16_t data_len;
+};
+
+struct general_praameter {
+    uint8_t service_hdr;
+    uint8_t breakbit_reserved; //breakbit set to zero
+    uint16_t data_len;
+    struct adspec_type adspec[4];
+};
+
+// Sender ADSPEC Object for PATH Message
+struct sender_adspec_object {
+    struct class_obj class_obj;
+    uint16_t version_reserved;  //is 0
+    uint16_t data_len;
+    struct general_praameter gp;
+    struct controlled_load cl;
+};
+
+//===============================================
+//Struct only for RESV messages
+//=============================================
+
+// Sender TSPEC Object for PATH Message
+struct flow_spec_object {
+    struct class_obj class_obj;
+    uint16_t version_reserved; //version is 4 bit only
+    uint16_t data_len; // is 7 words
+    uint8_t service_hdr; //is 5
+    uint8_t reserved;    // is 0
+    uint8_t service_len; //is 6
+    struct bucket_param bp;
+};
+
+
+// Style Object for RESV message
+struct style_object {
+    struct class_obj class_obj;
+    uint16_t flags;
+    uint16_t reserved;
+    uint32_t style;
+};
+
+//Filter Spec Object for RESV Message
+struct filter_spec_object {
     struct class_obj class_obj;
     struct in_addr src_ip;
     uint16_t Reserved;
@@ -120,25 +239,17 @@ struct label_object {
     uint32_t label;
 };
 
-// Style Object for RESV message
-struct style_object {
-    struct class_obj class_obj;
-    uint16_t flags;
-    uint16_t reserved;
-    uint32_t style;
-};
 
-//Filter Spec Object for RESV Message
-struct Filter_spec_object {
-    struct class_obj class_obj;
-    struct in_addr src_ip;
-    uint16_t Reserved;
-    uint16_t LSP_ID;
+
+
+struct ip_option {
+    uint8_t type;
+    uint8_t len;
+    uint16_t value;
 };
 
 
-
-
+uint16_t calculate_checksum(void *, size_t);
 void send_path_message(int, uint16_t);
 void send_resv_message(int, uint16_t);
 void receive_resv_message(int, char[], struct sockaddr_in);
@@ -149,3 +260,7 @@ int dst_reached(char []);
 void get_ip(char[], char[], char [], uint16_t *);
 extern int get_nexthop(const char *, const char *, uint8_t*, const char *, uint32_t*);
 extern int get_srcip(const char *, const char *, uint32_t*);
+void send_pathtear_message(int, uint16_t);
+void send_resvtear_message(int, uint16_t);
+void receive_pathtear_message(int, char[], struct sockaddr_in);
+void receive_resvtear_message(int, char[], struct sockaddr_in);
